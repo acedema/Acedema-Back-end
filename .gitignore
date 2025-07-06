@@ -1,0 +1,7 @@
+# Ignorar archivos con credenciales y configuraciones locales
+appsettings.json
+appsettings.*.json
+.vs/
+appsettings.json
+appsettings.*.json
+.vs/
