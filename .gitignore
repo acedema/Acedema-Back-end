@@ -2,6 +2,3 @@
 appsettings.json
 appsettings.*.json
 .vs/
-appsettings.json
-appsettings.*.json
-.vs/
