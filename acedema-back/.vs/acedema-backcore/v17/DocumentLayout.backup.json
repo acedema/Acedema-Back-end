@@ -1,0 +1,102 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\danie\\OneDrive\\Escritorio\\Acedema\\acedema-back\\acedema-back\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{FDCB0CAB-15E0-4FCA-BBC4-09795A354558}|API\\API.csproj|c:\\users\\danie\\onedrive\\escritorio\\acedema\\acedema-back\\acedema-back\\api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{FDCB0CAB-15E0-4FCA-BBC4-09795A354558}|API\\API.csproj|solutionrelative:api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{FDCB0CAB-15E0-4FCA-BBC4-09795A354558}|API\\API.csproj|c:\\users\\danie\\onedrive\\escritorio\\acedema\\acedema-back\\acedema-back\\api\\controllers\\personacontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{FDCB0CAB-15E0-4FCA-BBC4-09795A354558}|API\\API.csproj|solutionrelative:api\\controllers\\personacontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{FDCB0CAB-15E0-4FCA-BBC4-09795A354558}|API\\API.csproj|c:\\users\\danie\\onedrive\\escritorio\\acedema\\acedema-back\\acedema-back\\api\\services\\logicapersona.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{FDCB0CAB-15E0-4FCA-BBC4-09795A354558}|API\\API.csproj|solutionrelative:api\\services\\logicapersona.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{FDCB0CAB-15E0-4FCA-BBC4-09795A354558}|API\\API.csproj|c:\\users\\danie\\onedrive\\escritorio\\acedema\\acedema-back\\acedema-back\\api\\models\\request\\reqcorreo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{FDCB0CAB-15E0-4FCA-BBC4-09795A354558}|API\\API.csproj|solutionrelative:api\\models\\request\\reqcorreo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\Users\\danie\\OneDrive\\Escritorio\\Acedema\\acedema-back\\acedema-back\\API\\appsettings.json",
+              "RelativeDocumentMoniker": "API\\appsettings.json",
+              "ToolTip": "C:\\Users\\danie\\OneDrive\\Escritorio\\Acedema\\acedema-back\\acedema-back\\API\\appsettings.json",
+              "RelativeToolTip": "API\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAABBAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-07-06T07:05:48.09Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "ReqCorreo.cs",
+              "DocumentMoniker": "C:\\Users\\danie\\OneDrive\\Escritorio\\Acedema\\acedema-back\\acedema-back\\API\\Models\\Request\\ReqCorreo.cs",
+              "RelativeDocumentMoniker": "API\\Models\\Request\\ReqCorreo.cs",
+              "ToolTip": "C:\\Users\\danie\\OneDrive\\Escritorio\\Acedema\\acedema-back\\acedema-back\\API\\Models\\Request\\ReqCorreo.cs",
+              "RelativeToolTip": "API\\Models\\Request\\ReqCorreo.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-07-06T07:00:07.554Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "PersonaController.cs",
+              "DocumentMoniker": "C:\\Users\\danie\\OneDrive\\Escritorio\\Acedema\\acedema-back\\acedema-back\\API\\Controllers\\PersonaController.cs",
+              "RelativeDocumentMoniker": "API\\Controllers\\PersonaController.cs",
+              "ToolTip": "C:\\Users\\danie\\OneDrive\\Escritorio\\Acedema\\acedema-back\\acedema-back\\API\\Controllers\\PersonaController.cs",
+              "RelativeToolTip": "API\\Controllers\\PersonaController.cs",
+              "ViewState": "AgIAAE8AAAAAAAAAAAAxwGcAAAA5AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-07-06T06:39:30.254Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "LogicaPersona.cs",
+              "DocumentMoniker": "C:\\Users\\danie\\OneDrive\\Escritorio\\Acedema\\acedema-back\\acedema-back\\API\\Services\\LogicaPersona.cs",
+              "RelativeDocumentMoniker": "API\\Services\\LogicaPersona.cs",
+              "ToolTip": "C:\\Users\\danie\\OneDrive\\Escritorio\\Acedema\\acedema-back\\acedema-back\\API\\Services\\LogicaPersona.cs",
+              "RelativeToolTip": "API\\Services\\LogicaPersona.cs",
+              "ViewState": "AgIAAPgAAAAAAAAAAAAWwEoBAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-07-03T08:40:26.447Z",
+              "EditorCaption": ""
+            }
+          ]
+        },
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": -1,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
