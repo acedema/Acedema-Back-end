@@ -1,8 +1,13 @@
 using API.Data;
 using API.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var key = Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]);
 
 // Carga configuración de appsettings.json y variables de entorno
 builder.Configuration
@@ -21,6 +26,8 @@ builder.Services.AddDbContext<MyDbContext>(opt =>
 builder.Services.AddScoped<LogicaPersona>();
 builder.Services.AddScoped<LogicaMatricula>();
 builder.Services.AddScoped<LogicaUtilitarios>();
+builder.Services.AddScoped<JwtTokenHelper>();
+
 
 
 // 4) Configura Swagger/OpenAPI
@@ -41,6 +48,27 @@ builder.Services.AddCors(options =>
 });
 // ───────────────────────────────────────────────────────────────────────────────
 
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidateAudience = true,
+        ValidAudience = jwtSettings["Audience"],
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ValidateLifetime = true
+    };
+});
+
+
+
 var app = builder.Build();
 
 // Middleware
@@ -55,6 +83,9 @@ app.UseHttpsRedirection();
 // ─── NUEVO: Habilita CORS ──────────────────────────────────────────────────────
 app.UseCors("AllowFrontend");
 // ───────────────────────────────────────────────────────────────────────────────
+
+app.UseAuthentication();
+
 
 app.UseAuthorization();
 

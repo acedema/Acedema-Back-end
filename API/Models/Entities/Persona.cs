@@ -41,5 +41,8 @@ namespace API.Models.Entities
         [Column("cedula_responsable")]
         public int? CedulaResponsable { get; set; }
 
+        // Propiedad adicional que NO está en la tabla Persona, sino se obtiene en la consulta con JOIN
+        public string NombreRol { get; set; } = string.Empty;
+
     }
 }

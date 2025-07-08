@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "kZ0GbpcrhWA=",
+  "dgSpecHash": "IMCQ2J8vx/Q=",
   "success": true,
-  "projectFilePath": "C:\\Users\\danie\\OneDrive\\Escritorio\\acedema-limpio\\acedema-back\\API\\API.csproj",
+  "projectFilePath": "C:\\Users\\danie\\OneDrive\\Escritorio\\acedema-back\\API\\API.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\danie\\.nuget\\packages\\azure.core\\1.38.0\\azure.core.1.38.0.nupkg.sha512",
     "C:\\Users\\danie\\.nuget\\packages\\azure.identity\\1.11.4\\azure.identity.1.11.4.nupkg.sha512",

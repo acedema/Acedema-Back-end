@@ -1,4 +1,39 @@
-# Ignorar archivos con credenciales y configuraciones locales
-appsettings.json
-appsettings.*.json
+# Build folders
+bin/
+obj/
+
+# Visual Studio files
 .vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider IDE
+.idea/
+
+# Logs
+*.log
+
+# Bases de datos locales
+*.db
+*.sqlite
+
+# Archivos de configuración con secretos (no subir)
+appsettings.json
+appsettings.Development.json
+
+# NuGet packages
+packages/
+
+# Resharper
+_ReSharper*/
+*.DotSettings.user
+
+# ASP.NET temporary files
+App_Data/
+
+# System files
+*.DS_Store
+*.Thumbs.db
+acedema-back/

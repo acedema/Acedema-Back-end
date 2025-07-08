@@ -361,6 +361,87 @@ namespace API.Services
         }
 
 
+        public async Task<ResLoginPersona> ValidarLoginAsync(ReqLoginPersona req)
+        {
+            var res = new ResLoginPersona();
+            var utilitarios = new LogicaUtilitarios(_configuration);
+
+            try
+            {
+                using var conn = new SqlConnection(_connectionString);
+                using var cmd = new SqlCommand("Login_Persona", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                // Encriptar la contraseña antes de enviarla
+                string passEncriptada = utilitarios.Encriptar(req.Contrasena);
+
+                // Parámetros de entrada
+                cmd.Parameters.AddWithValue("@email", req.Correo);
+                cmd.Parameters.AddWithValue("@password", passEncriptada);
+
+                // Parámetros de salida
+                var paramErrorOccurred = new SqlParameter("@ErrorOccurred", System.Data.SqlDbType.Int) { Direction = System.Data.ParameterDirection.Output };
+                var paramErrorMensaje = new SqlParameter("@ErrorMensaje", System.Data.SqlDbType.VarChar, 255) { Direction = System.Data.ParameterDirection.Output };
+                var paramIdReturn = new SqlParameter("@idReturn", System.Data.SqlDbType.Int) { Direction = System.Data.ParameterDirection.Output };
+                var paramResultado = new SqlParameter("@resultado", System.Data.SqlDbType.Bit) { Direction = System.Data.ParameterDirection.Output };
+
+                cmd.Parameters.Add(paramErrorOccurred);
+                cmd.Parameters.Add(paramErrorMensaje);
+                cmd.Parameters.Add(paramIdReturn);
+                cmd.Parameters.Add(paramResultado);
+
+                await conn.OpenAsync();
+
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                if (await reader.ReadAsync())
+                {
+                    res.Persona = new Persona
+                    {
+                        PersonaId = reader.GetInt32(reader.GetOrdinal("id_persona")),
+                        NumCedula = reader.IsDBNull(reader.GetOrdinal("num_cedula")) ? 0 : reader.GetInt32(reader.GetOrdinal("num_cedula")),
+                        FechaNacimiento = reader.IsDBNull(reader.GetOrdinal("fecha_nacimiento")) ? DateTime.MinValue : reader.GetDateTime(reader.GetOrdinal("fecha_nacimiento")),
+                        PrimerNombre = reader.IsDBNull(reader.GetOrdinal("primer_nombre")) ? "" : reader.GetString(reader.GetOrdinal("primer_nombre")),
+                        SegundoNombre = reader.IsDBNull(reader.GetOrdinal("segundo_nombre")) ? null : reader.GetString(reader.GetOrdinal("segundo_nombre")),
+                        PrimerApellido = reader.IsDBNull(reader.GetOrdinal("primer_apellido")) ? "" : reader.GetString(reader.GetOrdinal("primer_apellido")),
+                        SegundoApellido = reader.IsDBNull(reader.GetOrdinal("segundo_apellido")) ? "" : reader.GetString(reader.GetOrdinal("segundo_apellido")),
+                        Correo = reader.IsDBNull(reader.GetOrdinal("correo")) ? "" : reader.GetString(reader.GetOrdinal("correo")),
+                        Direccion = reader.IsDBNull(reader.GetOrdinal("direccion")) ? "" : reader.GetString(reader.GetOrdinal("direccion")),
+                        Telefono1 = reader.IsDBNull(reader.GetOrdinal("telefono_1")) ? 0 : reader.GetInt32(reader.GetOrdinal("telefono_1")),
+                        Telefono2 = reader.IsDBNull(reader.GetOrdinal("telefono_2")) ? 0 : reader.GetInt32(reader.GetOrdinal("telefono_2")),
+                        IdRol = reader.IsDBNull(reader.GetOrdinal("id_Rol")) ? 0 : reader.GetInt32(reader.GetOrdinal("id_Rol")),
+                        Puesto = reader.IsDBNull(reader.GetOrdinal("puesto")) ? "" : reader.GetString(reader.GetOrdinal("puesto")),
+                        CedulaResponsable = reader.IsDBNull(reader.GetOrdinal("cedula_responsable")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("cedula_responsable")),
+                        NombreRol = reader.IsDBNull(reader.GetOrdinal("nombre")) ? "" : reader.GetString(reader.GetOrdinal("nombre")),
+                    };
+                }
+
+                await reader.CloseAsync();
+
+                // Leer parámetros de salida
+                int errorOccurred = Convert.ToInt32(paramErrorOccurred.Value);
+                string errorMensaje = paramErrorMensaje.Value?.ToString();
+                bool resultado = paramResultado.Value != DBNull.Value && Convert.ToBoolean(paramResultado.Value);
+
+                if (errorOccurred != 0 || !resultado)
+                {
+                    res.Resultado = false;
+                    res.Mensaje = string.IsNullOrEmpty(errorMensaje) ? "Error en login." : errorMensaje;
+                    return res;
+                }
+
+                res.Resultado = true;
+                res.Mensaje = "Login exitoso.";
+            }
+            catch (Exception ex)
+            {
+                res.Resultado = false;
+                res.Mensaje = "Error inesperado en el login.";
+                res.ListaDeErrores.Add(ex.Message);
+            }
+
+            return res;
+        }
 
     }
 }
