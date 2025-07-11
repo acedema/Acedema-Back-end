@@ -306,6 +306,15 @@ namespace API.Services
             return res;
         }
 
+        /// <summary>
+        /// Verifica si existe una persona con el correo electrónico proporcionado.
+        /// </summary>
+        /// <param name="correo">Correo electrónico a verificar.</param>
+        /// <returns>
+        /// Objeto <see cref="ResExisteCorreo"/> indicando si existe una persona con ese correo,
+        /// así como posibles errores ocurridos durante la operación.
+        /// </returns>
+
         public async Task<ResExisteCorreo> ExistePersonaPorCorreoAsync(string correo)
         {
             var res = new ResExisteCorreo();
@@ -330,6 +339,15 @@ namespace API.Services
             return res;
         }
 
+        /// <summary>
+        /// Actualiza la contraseña de una persona utilizando su correo electrónico.
+        /// </summary>
+        /// <param name="correo">Correo electrónico de la persona.</param>
+        /// <param name="nuevaContrasenaHash">Nueva contraseña en formato hash.</param>
+        /// <returns>
+        /// Objeto <see cref="ResActualizarContrasena"/> con el resultado de la operación,
+        /// incluyendo si fue exitosa y mensajes de error si aplica.
+        /// </returns>
 
         public async Task<ResActualizarContrasena> ActualizarContrasenaPorCorreoAsync(string correo, string nuevaContrasenaHash)
         {
@@ -360,6 +378,14 @@ namespace API.Services
             return res;
         }
 
+        /// <summary>
+        /// Valida las credenciales de inicio de sesión de una persona.
+        /// </summary>
+        /// <param name="req">Objeto <see cref="ReqLoginPersona"/> que contiene el correo y la contraseña en texto plano.</param>
+        /// <returns>
+        /// Objeto <see cref="ResLoginPersona"/> con los datos de la persona si el login es exitoso,
+        /// además de los mensajes y errores correspondientes.
+        /// </returns>
 
         public async Task<ResLoginPersona> ValidarLoginAsync(ReqLoginPersona req)
         {
@@ -442,6 +468,145 @@ namespace API.Services
 
             return res;
         }
+
+        /// <summary>
+        /// Obtiene la información completa de una persona a partir de su ID o correo electrónico.
+        /// </summary>
+        /// <param name="req">Objeto <see cref="ReqObtenerPersona"/> con el ID y/o correo a consultar.</param>
+        /// <returns>
+        /// Objeto <see cref="ResOptenerPersona"/> con la información de la persona, si fue encontrada,
+        /// junto con el estado de la operación y errores si existieran.
+        /// </returns>
+
+        public async Task<ResOptenerPersona> ObtenerPersonaPorCorreoAsync(ReqObtenerPersona req)
+        {
+            var response = new ResOptenerPersona();
+
+            using (var conn = new SqlConnection(_connectionString))
+            using (var cmd = new SqlCommand("TraerInfoUsuario", conn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                // Se pasan parámetros: Id y correo (correo puede ser null)
+                cmd.Parameters.AddWithValue("@id_persona", req.PersonaId == 0 ? (object)DBNull.Value : req.PersonaId);
+
+                // Si agregas Correo al ReqObtenerPersona, úsalo aquí:
+                cmd.Parameters.AddWithValue("@correo", string.IsNullOrEmpty(req.Correo) ? (object)DBNull.Value : req.Correo);
+
+                // Parámetros OUTPUT
+                var errorOccurredParam = new SqlParameter("@ErrorOccurred", SqlDbType.Int) { Direction = ParameterDirection.Output };
+                var errorMsgParam = new SqlParameter("@ErrorMensaje", SqlDbType.VarChar, 255) { Direction = ParameterDirection.Output };
+                var idReturnParam = new SqlParameter("@idReturn", SqlDbType.Int) { Direction = ParameterDirection.Output };
+                var resultadoParam = new SqlParameter("@resultado", SqlDbType.Bit) { Direction = ParameterDirection.Output };
+
+                cmd.Parameters.Add(errorOccurredParam);
+                cmd.Parameters.Add(errorMsgParam);
+                cmd.Parameters.Add(idReturnParam);
+                cmd.Parameters.Add(resultadoParam);
+
+                await conn.OpenAsync();
+
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        response.Persona = new Persona
+                        {
+                            PersonaId = reader.GetInt32(reader.GetOrdinal("id_persona")),
+                            NumCedula = reader.GetInt32(reader.GetOrdinal("num_cedula")),
+                            FechaNacimiento = reader.GetDateTime(reader.GetOrdinal("fecha_nacimiento")),
+                            PrimerNombre = reader.GetString(reader.GetOrdinal("primer_nombre")),
+                            SegundoNombre = reader.IsDBNull(reader.GetOrdinal("segundo_nombre")) ? null : reader.GetString(reader.GetOrdinal("segundo_nombre")),
+                            PrimerApellido = reader.GetString(reader.GetOrdinal("primer_apellido")),
+                            SegundoApellido = reader.IsDBNull(reader.GetOrdinal("segundo_apellido")) ? null : reader.GetString(reader.GetOrdinal("segundo_apellido")),
+                            Correo = reader.GetString(reader.GetOrdinal("correo")),
+                            Password = reader.IsDBNull(reader.GetOrdinal("contraseña")) ? null : reader.GetString(reader.GetOrdinal("contraseña")),
+                            Direccion = reader.IsDBNull(reader.GetOrdinal("direccion")) ? null : reader.GetString(reader.GetOrdinal("direccion")),
+                            Telefono1 = reader.IsDBNull(reader.GetOrdinal("telefono_1")) ? 0 : reader.GetInt32(reader.GetOrdinal("telefono_1")),
+                            Telefono2 = reader.IsDBNull(reader.GetOrdinal("telefono_2")) ? 0 : reader.GetInt32(reader.GetOrdinal("telefono_2")),
+                            IdRol = reader.GetInt32(reader.GetOrdinal("id_Rol")),
+                            Puesto = reader.IsDBNull(reader.GetOrdinal("puesto")) ? null : reader.GetString(reader.GetOrdinal("puesto")),
+                            CedulaResponsable = reader.IsDBNull(reader.GetOrdinal("cedula_responsable")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("cedula_responsable")),
+                            NombreRol = reader.IsDBNull(reader.GetOrdinal("nombre_rol")) ? "" : reader.GetString(reader.GetOrdinal("nombre_rol"))
+
+                        };
+                    }
+                }
+
+                response.Resultado = (bool)resultadoParam.Value;
+                response.ListaDeErrores = new List<string>();
+                if ((int)errorOccurredParam.Value == 1)
+                    response.ListaDeErrores.Add(errorMsgParam.Value.ToString() ?? "Error desconocido");
+            }
+
+            return response;
+        }
+
+        /// <summary>
+        /// Actualiza los datos del perfil de la persona en la base de datos.
+        /// Utiliza procedimiento almacenado para realizar la actualización.
+        /// </summary>
+        /// <param name="req">Datos con la información a actualizar</param>
+        /// <returns>Objeto con resultado y lista de errores si ocurren</returns>
+        public async Task<ResActualizarPerfil> ActualizarPerfilAsync(ReqActualizarPerfil req)
+        {
+            var res = new ResActualizarPerfil();
+
+            try
+            {
+                using (var con = new SqlConnection(_connectionString))
+                using (var cmd = new SqlCommand("dbo.ActualizarPerfilPersona", con))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    // Agregar parámetros al comando SQL
+                    cmd.Parameters.AddWithValue("@id_persona", req.PersonaId);
+                    cmd.Parameters.AddWithValue("@fecha_nacimiento", req.FechaNacimiento);
+                    cmd.Parameters.AddWithValue("@primer_nombre", req.PrimerNombre);
+                    cmd.Parameters.AddWithValue("@segundo_nombre", (object?)req.SegundoNombre ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@primer_apellido", req.PrimerApellido);
+                    cmd.Parameters.AddWithValue("@segundo_apellido", (object?)req.SegundoApellido ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@correo", req.Correo);
+                    cmd.Parameters.AddWithValue("@direccion", (object?)req.Direccion ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@telefono_1", req.Telefono1);
+                    cmd.Parameters.AddWithValue("@telefono_2", (object?)req.Telefono2 ?? DBNull.Value);
+
+                    // Parámetros de salida para manejar errores
+                    var paramErrorOccurred = new SqlParameter("@ErrorOccurred", SqlDbType.Int) { Direction = ParameterDirection.Output };
+                    var paramErrorMensaje = new SqlParameter("@ErrorMensaje", SqlDbType.VarChar, 255) { Direction = ParameterDirection.Output };
+
+                    cmd.Parameters.Add(paramErrorOccurred);
+                    cmd.Parameters.Add(paramErrorMensaje);
+
+                    // Ejecutar el procedimiento almacenado
+                    await con.OpenAsync();
+                    await cmd.ExecuteNonQueryAsync();
+
+                    int errorOccurred = (int)paramErrorOccurred.Value;
+                    string errorMensaje = paramErrorMensaje.Value?.ToString() ?? "";
+
+                    // Evaluar si hubo error
+                    if (errorOccurred == 1)
+                    {
+                        res.Resultado = false;
+                        res.ListaDeErrores.Add(errorMensaje);
+                    }
+                    else
+                    {
+                        res.Resultado = true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                res.Resultado = false;
+                res.ListaDeErrores.Add(ex.Message);
+            }
+
+            return res;
+        }
+
+
 
     }
 }

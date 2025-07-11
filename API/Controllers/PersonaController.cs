@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+Ôªøusing Microsoft.AspNetCore.Mvc;
 using API.Models.Request;
 using API.Models.Response;
 using API.Services;
@@ -6,6 +6,7 @@ using System.Security.Claims;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims; 
 
 namespace API.Controllers
 {
@@ -54,6 +55,31 @@ namespace API.Controllers
             return Ok(result);
         }
 
+        [Authorize]
+        [HttpGet("obtenerMiPerfil")]
+        public async Task<ActionResult<ResOptenerPersona>> obtenerMiPerfil()
+        {
+            // Obtener correo del token
+            var correo = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+
+            if (string.IsNullOrEmpty(correo))
+                return Unauthorized("Token inv√°lido o correo no encontrado.");
+
+            var req = new ReqObtenerPersona
+            {
+                PersonaId = 0, // No usar id, se busca por correo
+                Correo = correo
+            };
+
+            var resultado = await _logica.ObtenerPersonaPorCorreoAsync(req);
+
+            if (!resultado.Resultado)
+                return NotFound(resultado);
+
+            return Ok(resultado);
+        }
+
+
         /// <summary>
         /// Registra una nueva persona en el sistema. El administrador es quien crea la cuenta.
         /// </summary>
@@ -78,10 +104,10 @@ namespace API.Controllers
         }
 
         /// <summary>
-        /// Permite a un usuario actualizar su contraseÒa una vez iniciada sesiÛn con la temporal.
+        /// Permite a un usuario actualizar su contrase√±a una vez iniciada sesi√≥n con la temporal.
         /// </summary>
-        /// <param name="req">Correo, contraseÒa actual (temporal) y nueva contraseÒa.</param>
-        /// <returns>Resultado del proceso de actualizaciÛn de la contraseÒa.</returns>
+        /// <param name="req">Correo, contrase√±a actual (temporal) y nueva contrase√±a.</param>
+        /// <returns>Resultado del proceso de actualizaci√≥n de la contrase√±a.</returns>
         [HttpPost("actualizarContrasena")]
         [Authorize]
         public async Task<ActionResult<ResRestablecerContrasena>> ActualizarContrasena([FromBody] ReqRestablecerContrasena req)
@@ -94,57 +120,56 @@ namespace API.Controllers
         }
 
         /// <summary>
-        /// Solicita la recuperaciÛn de contraseÒa para un correo registrado.
+        /// Solicita la recuperaci√≥n de contrase√±a para un correo registrado.
         /// </summary>
         /// <param name="req">Objeto que contiene el correo del usuario.</param>
         /// <returns>
-        /// - 200 OK si se enviÛ correctamente el correo con el enlace de recuperaciÛn.  
-        /// - 400 BadRequest si el correo es nulo o vacÌo.  
-        /// - 404 NotFound si el correo no est· registrado.  
-        /// - 500 InternalServerError si ocurriÛ un error durante la verificaciÛn o el envÌo del correo.
+        /// - 200 OK si se envi√≥ correctamente el correo con el enlace de recuperaci√≥n.  
+        /// - 400 BadRequest si el correo es nulo o vac√≠o.  
+        /// - 404 NotFound si el correo no est√° registrado.  
+        /// - 500 InternalServerError si ocurri√≥ un error durante la verificaci√≥n o el env√≠o del correo.
         /// </returns>
         [HttpPost("solicitar-recuperacion")]
         public async Task<IActionResult> SolicitarRecuperacion([FromBody] ReqCorreo req)
         {
-            if (string.IsNullOrWhiteSpace(req.Correo))
+            if (req == null || string.IsNullOrWhiteSpace(req.Correo))
                 return BadRequest("El correo es obligatorio.");
 
             var resExiste = await _logica.ExistePersonaPorCorreoAsync(req.Correo);
 
-            // Verifica si hubo error al consultar
             if (!resExiste.Resultado)
                 return StatusCode(500, "Error al verificar el correo.");
 
-            // Verifica si realmente existe
             if (!resExiste.Existe)
                 return NotFound("Correo no registrado.");
 
-            var jwtHelper = new JwtTokenHelper(_configuration);
-            var token = jwtHelper.GenerarTokenRestablecer(req.Correo);
+            var token = _jwtHelper.GenerarTokenRestablecer(req.Correo);
 
             var urlRecuperacion = $"https://tusitio.com/restablecer?token={token}";
 
             bool emailEnviado = await _logicaUtilitarios.EnviarCorreoRecuperacionAsync(req.Correo, urlRecuperacion);
-            if (!emailEnviado)
-                return StatusCode(500, "Error enviando el correo de recuperaciÛn.");
 
-            return Ok("Se ha enviado un enlace para restablecer su contraseÒa.");
+            if (!emailEnviado)
+                return StatusCode(500, "Error enviando el correo de recuperaci√≥n.");
+
+            return Ok("Se ha enviado un enlace para restablecer su contrase√±a.");
         }
 
+
         /// <summary>
-        /// Restablece la contraseÒa de un usuario utilizando un token JWT de recuperaciÛn.
+        /// Restablece la contrase√±a de un usuario utilizando un token JWT de recuperaci√≥n.
         /// </summary>
-        /// <param name="req">Objeto que contiene el token JWT y la nueva contraseÒa.</param>
+        /// <param name="req">Objeto que contiene el token JWT y la nueva contrase√±a.</param>
         /// <returns>
-        /// - 200 OK si la contraseÒa se actualizÛ correctamente.  
-        /// - 400 BadRequest si faltan datos, el token es inv·lido o la contraseÒa es muy corta.  
-        /// - 500 InternalServerError si ocurre un error al actualizar la contraseÒa.
+        /// - 200 OK si la contrase√±a se actualiz√≥ correctamente.  
+        /// - 400 BadRequest si faltan datos, el token es inv√°lido o la contrase√±a es muy corta.  
+        /// - 500 InternalServerError si ocurre un error al actualizar la contrase√±a.
         /// </returns>
         [HttpPost("restablecer-con-token")]
-        public async Task<IActionResult> RestablecerConToken([FromBody] ReqRestablecerConToken req)
+        public async Task<IActionResult> RestablecerConToken ([FromBody] ReqRestablecerConToken req)
         {
             if (req == null || string.IsNullOrWhiteSpace(req.Token) || string.IsNullOrWhiteSpace(req.NuevaContrasena))
-                return BadRequest("Token y nueva contraseÒa son obligatorios.");
+                return BadRequest("Token y nueva contrase√±a son obligatorios.");
 
             try
             {
@@ -152,50 +177,50 @@ namespace API.Controllers
                 var correo = claims.FindFirst(ClaimTypes.Email)?.Value;
 
                 if (string.IsNullOrEmpty(correo))
-                    return BadRequest("Token inv·lido.");
+                    return BadRequest("Token inv√°lido.");
 
                 if (req.NuevaContrasena.Length < 8)
-                    return BadRequest("La nueva contraseÒa debe tener al menos 8 caracteres.");
+                    return BadRequest("La nueva contrase√±a debe tener al menos 8 caracteres.");
 
                 var utilitarios = new LogicaUtilitarios(_configuration);
                 string nuevaPassHash = utilitarios.Encriptar(req.NuevaContrasena);
 
                 var resultado = await _logica.ActualizarContrasenaPorCorreoAsync(correo, nuevaPassHash);
                 if (!resultado.Resultado)
-                    return StatusCode(500, $"Error actualizando la contraseÒa: {string.Join(", ", resultado.ListaDeErrores)}");
+                    return StatusCode(500, $"Error actualizando la contrase√±a: {string.Join(", ", resultado.ListaDeErrores)}");
 
-                return Ok("ContraseÒa restablecida con Èxito.");
+                return Ok("Contrase√±a restablecida con √©xito.");
             }
             catch (SecurityTokenException ex)
             {
-                return BadRequest($"Token inv·lido o expirado: {ex.Message}");
+                return BadRequest($"Token inv√°lido o expirado: {ex.Message}");
             }
         }
 
 
         /// <summary>
-        /// Autentica a un usuario con correo y contraseÒa, y devuelve un token JWT si es v·lido.
+        /// Autentica a un usuario con correo y contrase√±a, y devuelve un token JWT si es v√°lido.
         /// </summary>
-        /// <param name="req">Objeto que contiene las credenciales del usuario (correo y contraseÒa).</param>
+        /// <param name="req">Objeto que contiene las credenciales del usuario (correo y contrase√±a).</param>
         /// <returns>
         /// Respuesta HTTP:
-        /// - 200 OK con un objeto que incluye el token JWT y datos b·sicos del usuario en caso de Èxito.
+        /// - 200 OK con un objeto que incluye el token JWT y datos b√°sicos del usuario en caso de √©xito.
         /// - 401 Unauthorized si las credenciales son incorrectas.
-        /// - 400 BadRequest si el request es nulo o inv·lido.
+        /// - 400 BadRequest si el request es nulo o inv√°lido.
         /// </returns>
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] ReqLoginPersona req)
         {
-            // 1. Validar que el request no sea nulo y que los campos no estÈn vacÌos
+            // 1. Validar que el request no sea nulo y que los campos no est√©n vac√≠os
             if (req == null || string.IsNullOrWhiteSpace(req.Correo) || string.IsNullOrWhiteSpace(req.Contrasena))
             {
-                return BadRequest(new { message = "El correo y la contraseÒa son obligatorios." });
+                return BadRequest(new { message = "El correo y la contrase√±a son obligatorios." });
             }
 
-            // 2. Llamar a la lÛgica para validar las credenciales mediante procedimiento almacenado
+            // 2. Llamar a la l√≥gica para validar las credenciales mediante procedimiento almacenado
             var resLogin = await _logica.ValidarLoginAsync(req);
 
-            // 3. Si la validaciÛn falla, responder con 401 Unauthorized y mensaje
+            // 3. Si la validaci√≥n falla, responder con 401 Unauthorized y mensaje
             if (!resLogin.Resultado)
                 return Unauthorized(new { message = resLogin.Mensaje });
 
@@ -220,10 +245,50 @@ namespace API.Controllers
                     resLogin.Persona.Correo,
                     resLogin.Persona.IdRol,
                     resLogin.Persona.Puesto,
-                    resLogin.Persona.NombreRol // TambiÈn lo puedes enviar si quieres
+                    resLogin.Persona.NombreRol // Tambi√©n lo puedes enviar si quieres
 
                 }
             });
+        }
+
+        /// <summary>
+        /// Endpoint para que un usuario autorizado actualice su perfil personal.
+        /// Valida que el correo en el token coincida con el correo del request para evitar modificaciones no autorizadas.
+        /// </summary>
+        /// <param name="req">Datos del perfil a actualizar</param>
+        /// <returns>Resultado de la operaci√≥n</returns>
+        [Authorize]
+        [HttpPut("actualizarMiPerfil")]
+        public async Task<IActionResult> ActualizarMiPerfil([FromBody] ReqActualizarPerfil req)
+        {
+            if (req == null)
+                return BadRequest("Request nulo.");
+
+            var correoToken = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+
+            if (string.IsNullOrEmpty(correoToken))
+                return Unauthorized("Token inv√°lido.");
+
+            if (!string.Equals(req.Correo, correoToken, StringComparison.OrdinalIgnoreCase))
+                return Forbid("No puede actualizar datos de otro usuario.");
+
+            // ‚úÖ Obtener PersonaId real desde el correo
+            var personaActual = await _logica.ObtenerPersonaPorCorreoAsync(new ReqObtenerPersona
+            {
+                Correo = correoToken
+            });
+
+            if (!personaActual.Resultado || personaActual.Persona == null)
+                return NotFound("No se encontr√≥ la persona asociada al token.");
+
+            req.PersonaId = personaActual.Persona.PersonaId;
+
+            var resultado = await _logica.ActualizarPerfilAsync(req);
+
+            if (!resultado.Resultado)
+                return BadRequest(resultado);
+
+            return Ok(new { mensaje = "Perfil actualizado correctamente." });
         }
 
 

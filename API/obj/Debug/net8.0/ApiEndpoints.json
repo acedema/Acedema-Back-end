@@ -63,8 +63,50 @@
   },
   {
     "ContainingType": "API.Controllers.PersonaController",
-    "Method": "LoginPersona",
-    "RelativePath": "api/Persona/loginPersona",
+    "Method": "ActualizarMiPerfil",
+    "RelativePath": "api/Persona/actualizar-mi-perfil",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "req",
+        "Type": "ReqActualizarPerfil",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "API.Controllers.PersonaController",
+    "Method": "ActualizarContrasena",
+    "RelativePath": "api/Persona/actualizarContrasena",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "req",
+        "Type": "API.Models.Request.ReqRestablecerContrasena",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "API.Models.Response.ResRestablecerContrasena",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "API.Controllers.PersonaController",
+    "Method": "Login",
+    "RelativePath": "api/Persona/login",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
@@ -75,9 +117,19 @@
         "IsRequired": true
       }
     ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "API.Controllers.PersonaController",
+    "Method": "obtenerMiPerfil",
+    "RelativePath": "api/Persona/obtenerMiPerfil",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
     "ReturnTypes": [
       {
-        "Type": "API.Models.Response.ResLoginPersona",
+        "Type": "API.Models.Response.ResOptenerPersona",
         "MediaTypes": [
           "text/plain",
           "application/json",
@@ -138,6 +190,38 @@
         "StatusCode": 200
       }
     ]
+  },
+  {
+    "ContainingType": "API.Controllers.PersonaController",
+    "Method": "RestablecerConToken",
+    "RelativePath": "api/Persona/restablecer-con-token",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "req",
+        "Type": "API.Models.Request.ReqRestablecerConToken",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "API.Controllers.PersonaController",
+    "Method": "SolicitarRecuperacion",
+    "RelativePath": "api/Persona/solicitar-recuperacion",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "req",
+        "Type": "API.Models.Request.ReqCorreo",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
   },
   {
     "ContainingType": "API.Controllers.ValuesController",

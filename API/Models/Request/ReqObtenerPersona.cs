@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace API.Models.Request
+﻿namespace API.Models.Request
 {
     public class ReqObtenerPersona
     {
-        public int PersonaId { get; set; }
+        public int? PersonaId { get; set; }  // nullable para que pueda no enviarse
+        public string? Correo { get; set; }  // nullable para buscar por correo
     }
 }
