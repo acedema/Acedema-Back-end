@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using TuProyecto.Servicios;
 
 var builder = WebApplication.CreateBuilder(args);
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -27,6 +28,19 @@ builder.Services.AddScoped<LogicaPersona>();
 builder.Services.AddScoped<LogicaMatricula>();
 builder.Services.AddScoped<LogicaUtilitarios>();
 builder.Services.AddScoped<JwtTokenHelper>();
+builder.Services.AddScoped<LogicaForo>();
+
+
+builder.Services.AddScoped<BlobStorageService>(sp =>
+{
+    var configuration = sp.GetRequiredService<IConfiguration>();
+
+    // Lee la cadena de conexión y el nombre del contenedor desde appsettings.json
+    var connectionString = configuration.GetSection("BlobStorage")["ConnectionString"];
+    var containerName = configuration.GetSection("BlobStorage")["ContainerName"];
+
+    return new BlobStorageService(connectionString, containerName);
+});
 
 
 

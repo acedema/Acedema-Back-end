@@ -751,3 +751,6 @@ C:\Users\danie\OneDrive\Escritorio\acedema-back\API\obj\Debug\net8.0\refint\API.
 C:\Users\danie\OneDrive\Escritorio\acedema-back\API\obj\Debug\net8.0\API.pdb
 C:\Users\danie\OneDrive\Escritorio\acedema-back\API\obj\Debug\net8.0\API.genruntimeconfig.cache
 C:\Users\danie\OneDrive\Escritorio\acedema-back\API\obj\Debug\net8.0\ref\API.dll
+C:\Users\danie\OneDrive\Escritorio\acedema-back\API\bin\Debug\net8.0\Azure.Storage.Blobs.dll
+C:\Users\danie\OneDrive\Escritorio\acedema-back\API\bin\Debug\net8.0\Azure.Storage.Common.dll
+C:\Users\danie\OneDrive\Escritorio\acedema-back\API\bin\Debug\net8.0\System.IO.Hashing.dll

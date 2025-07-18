@@ -1,25 +1,41 @@
-﻿using API.Data;
-using API.Models.Entities;
-using API.Models.Request;
+﻿using API.Models.Request;
 using API.Models.Response;
+using API.Models.Entities;
 using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Linq;
 using System.Threading.Tasks;
+using TuProyecto.Servicios;
 
 namespace API.Services
 {
+    /// <summary>
+    /// Lógica de negocio para procesos relacionados con matrícula.
+    /// </summary>
     public class LogicaMatricula
     {
         private readonly string _connectionString;
+        private readonly BlobStorageService _blobStorageService;
 
-        public LogicaMatricula(IConfiguration configuration)
+        /// <summary>
+        /// Inicializa la lógica con la cadena de conexión.
+        /// </summary>
+        /// <param name="configuration">Configuración para obtener la cadena de conexión.</param>
+        public LogicaMatricula(IConfiguration configuration, BlobStorageService blobStorageService)
         {
             _connectionString = configuration.GetConnectionString("DefaultConnection");
+            _blobStorageService = blobStorageService;
         }
 
+        /// <summary>
+        /// Busca la matrícula asociada a un estudiante dado su ID.
+        /// </summary>
+        /// <param name="req">Objeto con el ID del estudiante.</param>
+        /// <returns>
+        /// - Resultado con objeto matrícula si se encontró.  
+        /// - Lista de errores y mensaje en caso de fallo.
+        /// </returns>
         public async Task<ResOptenerMatricula> BuscarMatriculaAsync(ReqOptenerMatricula req)
         {
             var res = new ResOptenerMatricula();
@@ -30,10 +46,10 @@ namespace API.Services
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
 
-                    // Entradas
+                    // Parámetro de entrada: id de persona
                     cmd.Parameters.AddWithValue("@id_persona", req.PersonaId);
 
-                    // Salidas
+                    // Parámetros de salida para controlar errores y resultado
                     var pError = new SqlParameter("@ErrorOccurred", SqlDbType.Int) { Direction = ParameterDirection.Output };
                     var pMensaje = new SqlParameter("@ErrorMensaje", SqlDbType.VarChar, 255) { Direction = ParameterDirection.Output };
                     var pIdReturn = new SqlParameter("@idReturn", SqlDbType.Int) { Direction = ParameterDirection.Output };
@@ -46,14 +62,12 @@ namespace API.Services
 
                     await conn.OpenAsync();
 
-                    //Aqui guarda la respuesta
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         if (reader.HasRows)
                         {
                             while (await reader.ReadAsync())
                             {
-                                // Ejemplo: crea aquí un objeto Matricula según los campos reales que devuelve el SP
                                 res.Matricula = new Matricula
                                 {
                                     MatriculaId = reader.GetInt32(reader.GetOrdinal("id_matricula")),
@@ -65,10 +79,9 @@ namespace API.Services
                         }
                     }
 
-                    // Salidas
+                    // Evaluar resultado y mensaje del SP
                     res.Resultado = (bool)pResultado.Value;
                     res.Mensaje = pMensaje.Value?.ToString();
-
                 }
             }
             catch (Exception ex)
@@ -80,6 +93,14 @@ namespace API.Services
             return res;
         }
 
+        /// <summary>
+        /// Realiza la matrícula para un estudiante dado su ID.
+        /// </summary>
+        /// <param name="req">Objeto con datos para crear la matrícula.</param>
+        /// <returns>
+        /// - Resultado con la matrícula creada si éxito.  
+        /// - Lista de errores y mensaje si falla la operación.
+        /// </returns>
         public async Task<ResMatricular> MatricularAsync(ReqMatricular req)
         {
             var res = new ResMatricular();
@@ -91,10 +112,10 @@ namespace API.Services
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
 
-                    // Entradas
+                    // Parámetro de entrada: id persona a matricular
                     cmd.Parameters.AddWithValue("@id_persona", req.PersonaId);
 
-                    // Salidas
+                    // Parámetros de salida para control de errores y resultados
                     var pError = new SqlParameter("@ErrorOccurred", SqlDbType.Int) { Direction = ParameterDirection.Output };
                     var pMensaje = new SqlParameter("@ErrorMensaje", SqlDbType.VarChar, 255) { Direction = ParameterDirection.Output };
                     var pIdReturn = new SqlParameter("@idReturn", SqlDbType.Int) { Direction = ParameterDirection.Output };
@@ -118,8 +139,7 @@ namespace API.Services
                             };
                         }
 
-                        // El SP retorna parámetros OUTPUT además del SELECT,
-                        // por lo que se debe cerrar el reader para poder leerlos.
+                        // El stored procedure retorna OUTPUT además de SELECT, cerrar reader para poder acceder
                         reader.Close();
                     }
 
@@ -135,6 +155,7 @@ namespace API.Services
 
             return res;
         }
+
+
     }
 }
-
