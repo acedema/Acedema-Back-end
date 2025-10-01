@@ -2,12 +2,8 @@
 using API.Models.Entities;
 using API.Models.Request;
 using API.Models.Response;
-using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using System.Collections.Generic;
+using Npgsql; // Changed from Microsoft.Data.SqlClient
 using System.Data;
-using System.Threading.Tasks;
 
 namespace API.Services
 {
@@ -49,70 +45,59 @@ namespace API.Services
 
             try
             {
-                using (var conn = new SqlConnection(_connectionString))
-                using (var cmd = new SqlCommand("TraerInfoUsuario", conn))
+                // Changed to NpgsqlConnection and NpgsqlCommand
+                using (var conn = new NpgsqlConnection(_connectionString))
+                using (var cmd = new NpgsqlCommand("TraerInfoUsuario", conn))
                 {
-                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.CommandType = CommandType.StoredProcedure; // For calling PostgreSQL Functions
 
                     // Parámetro de entrada
                     cmd.Parameters.AddWithValue("@id_persona", req.PersonaId);
-
-                    // Parámetros de salida
-                    var paramError = new SqlParameter("@ErrorOccurred", SqlDbType.Int) { Direction = ParameterDirection.Output };
-                    var paramMensaje = new SqlParameter("@ErrorMensaje", SqlDbType.VarChar, 255) { Direction = ParameterDirection.Output };
-                    var paramIdReturn = new SqlParameter("@idReturn", SqlDbType.Int) { Direction = ParameterDirection.Output };
-                    var paramResultado = new SqlParameter("@resultado", SqlDbType.Bit) { Direction = ParameterDirection.Output };
-
-                    cmd.Parameters.Add(paramError);
-                    cmd.Parameters.Add(paramMensaje);
-                    cmd.Parameters.Add(paramIdReturn);
-                    cmd.Parameters.Add(paramResultado);
-
+                    
+                    // Parámetros de salida de MSSQL han sido removidos.
+                    // En PostgreSQL, los status se leen como columnas del resultado de la función.
+                    
                     await conn.OpenAsync();
-
-                    // Leer resultado del procedimiento si hay datos
+                    
+                    // Leer resultado del procedimiento que ahora retorna un solo set de datos con la Persona + Status
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {
-                        if (reader.HasRows)
+                        if (await reader.ReadAsync()) // Lee la única fila que contiene Persona data + Status columns
                         {
-                            while (await reader.ReadAsync())
+                            // Leer datos de Persona
+                            res.Persona = new Persona
                             {
-                                res.Persona = new Persona
-                                {
-                                    PersonaId = reader.IsDBNull(reader.GetOrdinal("id_persona")) ? 0 : reader.GetInt32(reader.GetOrdinal("id_persona")),
-                                    NumCedula = reader.IsDBNull(reader.GetOrdinal("num_cedula")) ? 0 : reader.GetInt32(reader.GetOrdinal("num_cedula")),
-                                    FechaNacimiento = reader.IsDBNull(reader.GetOrdinal("fecha_nacimiento")) ? DateTime.MinValue : reader.GetDateTime(reader.GetOrdinal("fecha_nacimiento")),
-                                    PrimerNombre = reader.IsDBNull(reader.GetOrdinal("primer_nombre")) ? string.Empty : reader.GetString(reader.GetOrdinal("primer_nombre")),
-                                    SegundoNombre = reader.IsDBNull(reader.GetOrdinal("segundo_nombre")) ? null : reader.GetString(reader.GetOrdinal("segundo_nombre")),
-                                    PrimerApellido = reader.IsDBNull(reader.GetOrdinal("primer_apellido")) ? string.Empty : reader.GetString(reader.GetOrdinal("primer_apellido")),
-                                    SegundoApellido = reader.IsDBNull(reader.GetOrdinal("segundo_apellido")) ? string.Empty : reader.GetString(reader.GetOrdinal("segundo_apellido")),
-                                    Correo = reader.IsDBNull(reader.GetOrdinal("correo")) ? string.Empty : reader.GetString(reader.GetOrdinal("correo")),
-                                    Password = reader.IsDBNull(reader.GetOrdinal("contraseña")) ? null : reader.GetString(reader.GetOrdinal("contraseña")),
-                                    Direccion = reader.IsDBNull(reader.GetOrdinal("direccion")) ? string.Empty : reader.GetString(reader.GetOrdinal("direccion")),
-                                    Telefono1 = reader.IsDBNull(reader.GetOrdinal("telefono_1")) ? 0 : reader.GetInt32(reader.GetOrdinal("telefono_1")),
-                                    Telefono2 = reader.IsDBNull(reader.GetOrdinal("telefono_2")) ? 0 : reader.GetInt32(reader.GetOrdinal("telefono_2")),
-                                    IdRol = reader.IsDBNull(reader.GetOrdinal("id_Rol")) ? 0 : reader.GetInt32(reader.GetOrdinal("id_Rol")),
-                                    Puesto = reader.IsDBNull(reader.GetOrdinal("puesto")) ? string.Empty : reader.GetString(reader.GetOrdinal("puesto")),
-                                    CedulaResponsable = reader.IsDBNull(reader.GetOrdinal("cedula_responsable")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("cedula_responsable"))
-                                };
+                                PersonaId = reader.IsDBNull(reader.GetOrdinal("id_persona")) ? 0 : reader.GetInt32(reader.GetOrdinal("id_persona")),
+                                NumCedula = reader.IsDBNull(reader.GetOrdinal("num_cedula")) ? 0 : reader.GetInt32(reader.GetOrdinal("num_cedula")),
+                                FechaNacimiento = reader.IsDBNull(reader.GetOrdinal("fecha_nacimiento")) ? DateTime.MinValue : reader.GetDateTime(reader.GetOrdinal("fecha_nacimiento")),
+                                PrimerNombre = reader.IsDBNull(reader.GetOrdinal("primer_nombre")) ? string.Empty : reader.GetString(reader.GetOrdinal("primer_nombre")),
+                                SegundoNombre = reader.IsDBNull(reader.GetOrdinal("segundo_nombre")) ? null : reader.GetString(reader.GetOrdinal("segundo_nombre")),
+                                PrimerApellido = reader.IsDBNull(reader.GetOrdinal("primer_apellido")) ? string.Empty : reader.GetString(reader.GetOrdinal("primer_apellido")),
+                                SegundoApellido = reader.IsDBNull(reader.GetOrdinal("segundo_apellido")) ? string.Empty : reader.GetString(reader.GetOrdinal("segundo_apellido")),
+                                Correo = reader.IsDBNull(reader.GetOrdinal("correo")) ? string.Empty : reader.GetString(reader.GetOrdinal("correo")),
+                                Password = reader.IsDBNull(reader.GetOrdinal("contraseña")) ? null : reader.GetString(reader.GetOrdinal("contraseña")),
+                                Direccion = reader.IsDBNull(reader.GetOrdinal("direccion")) ? string.Empty : reader.GetString(reader.GetOrdinal("direccion")),
+                                Telefono1 = reader.IsDBNull(reader.GetOrdinal("telefono_1")) ? 0 : reader.GetInt32(reader.GetOrdinal("telefono_1")),
+                                Telefono2 = reader.IsDBNull(reader.GetOrdinal("telefono_2")) ? 0 : reader.GetInt32(reader.GetOrdinal("telefono_2")),
+                                IdRol = reader.IsDBNull(reader.GetOrdinal("id_rol")) ? 0 : reader.GetInt32(reader.GetOrdinal("id_rol")),
+                                Puesto = reader.IsDBNull(reader.GetOrdinal("puesto")) ? string.Empty : reader.GetString(reader.GetOrdinal("puesto")),
+                                CedulaResponsable = reader.IsDBNull(reader.GetOrdinal("cedula_responsable")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("cedula_responsable"))
+                            };
+                            
+                            // Leer los valores de Status/Error desde las mismas columnas de la fila
+                            int errorCode = reader.IsDBNull(reader.GetOrdinal("erroroccurred")) ? 0 : reader.GetInt32(reader.GetOrdinal("erroroccurred"));
+                            string mensaje = reader.IsDBNull(reader.GetOrdinal("errormensaje")) ? "" : reader.GetString(reader.GetOrdinal("errormensaje"));
+                            bool resultado = reader.IsDBNull(reader.GetOrdinal("resultado")) ? false : reader.GetBoolean(reader.GetOrdinal("resultado"));
 
-
+                            if (errorCode != 0 || !resultado)
+                            {
+                                res.Resultado = false;
+                                res.Mensaje = "No se pudo obtener la persona.";
+                                if (!string.IsNullOrEmpty(mensaje))
+                                    res.ListaDeErrores.Add(mensaje);
+                                return res;
                             }
                         }
-                    }
-
-                    // Leer los valores de salida del SP
-                    int errorCode = Convert.ToInt32(paramError.Value);
-                    string mensaje = paramMensaje.Value?.ToString();
-                    bool resultado = paramResultado.Value != DBNull.Value && Convert.ToBoolean(paramResultado.Value);
-
-                    if (errorCode != 0 || !resultado)
-                    {
-                        res.Resultado = false;
-                        res.Mensaje = "No se pudo obtener la persona.";
-                        if (!string.IsNullOrEmpty(mensaje))
-                            res.ListaDeErrores.Add(mensaje);
-                        return res;
                     }
 
                     res.Resultado = true;
@@ -156,8 +141,9 @@ namespace API.Services
                 string passwordPlano = utilitarios.GenerarPassword(12);
                 string passwordHash = utilitarios.Encriptar(passwordPlano);
 
-                using (var conn = new SqlConnection(_connectionString))
-                using (var cmd = new SqlCommand("Registrar_Persona", conn))
+                // Changed to NpgsqlConnection and NpgsqlCommand
+                using (var conn = new NpgsqlConnection(_connectionString))
+                using (var cmd = new NpgsqlCommand("Registrar_Persona", conn))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
 
@@ -176,60 +162,56 @@ namespace API.Services
                     cmd.Parameters.AddWithValue("@id_Rol", req.Persona.IdRol);
                     cmd.Parameters.AddWithValue("@puesto", req.Persona.Puesto);
                     cmd.Parameters.AddWithValue("@cedula_responsable", req.Persona.CedulaResponsable);
-
-                    // Parámetros de salida
-                    var paramError = new SqlParameter("@ErrorOccurred", SqlDbType.Int)
-                    {
-                        Direction = ParameterDirection.Output
-                    };
-                    cmd.Parameters.Add(paramError);
-
-                    var paramMensaje = new SqlParameter("@ErrorMensaje", SqlDbType.VarChar, 255)
-                    {
-                        Direction = ParameterDirection.Output
-                    };
-                    cmd.Parameters.Add(paramMensaje);
-
-                    var paramIdReturn = new SqlParameter("@idReturn", SqlDbType.Int)
-                    {
-                        Direction = ParameterDirection.Output
-                    };
-                    cmd.Parameters.Add(paramIdReturn);
+                    
+                    // Parámetros de salida de MSSQL han sido removidos.
+                    // La función de PostgreSQL retorna una tabla con los campos de status + idReturn.
 
                     await conn.OpenAsync();
-                    await cmd.ExecuteNonQueryAsync();
-
-                    int errorCode = Convert.ToInt32(paramError.Value);
-                    string mensajeSP = paramMensaje.Value?.ToString();
-
-                    object idReturnObj = paramIdReturn.Value;
-                    int? idReturn = idReturnObj != DBNull.Value ? Convert.ToInt32(idReturnObj) : null;
-
-                    if (errorCode != 0 || idReturn == null)
+                    
+                    // Usar ExecuteReaderAsync para leer la fila de estado/ID retornada por la función.
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
-                        res.Resultado = false;
-                        res.Mensaje = $"Error en SP o envío de correo: {mensajeSP}";
-                        return res;
+                        int errorCode = 1; // Default error
+                        string mensajeSP = "No se pudo registrar la persona.";
+                        int? idReturn = null;
+                        
+                        if (await reader.ReadAsync())
+                        {
+                            // Lee la única fila que contiene el ID y los campos de status.
+                            errorCode = reader.IsDBNull(reader.GetOrdinal("erroroccurred")) ? 0 : reader.GetInt32(reader.GetOrdinal("erroroccurred"));
+                            mensajeSP = reader.IsDBNull(reader.GetOrdinal("errormensaje")) ? "" : reader.GetString(reader.GetOrdinal("errormensaje"));
+                            
+                            // El idReturn puede ser NULL si hay un error en el SP (e.g., cédula duplicada)
+                            object idReturnObj = reader.IsDBNull(reader.GetOrdinal("idReturn")) ? (object)DBNull.Value : reader.GetValue(reader.GetOrdinal("idReturn"));
+                            idReturn = idReturnObj != DBNull.Value ? Convert.ToInt32(idReturnObj) : null;
+                        }
+                        
+                        if (errorCode != 0 || idReturn == null)
+                        {
+                            res.Resultado = false;
+                            res.Mensaje = $"Error en SP o envío de correo: {mensajeSP}";
+                            return res;
+                        }
+
+                        // Envío de contraseña por correo
+                        bool emailEnviado = await utilitarios.EnviarPasswordAsync(
+                            req.Persona.PrimerNombre,
+                            req.Persona.Correo,
+                            passwordPlano
+                        );
+
+                        if (!emailEnviado)
+                        {
+                            res.Resultado = false;
+                            res.Mensaje = "Persona registrada, pero falló el envío del correo.";
+                            return res;
+                        }
+
+                        res.Resultado = true;
+                        res.Mensaje = "Persona registrada y contraseña enviada exitosamente.";
+                        res.Persona = req.Persona;
+                        res.Persona.PersonaId = idReturn.Value;
                     }
-
-                    // Envío de contraseña por correo
-                    bool emailEnviado = await utilitarios.EnviarPasswordAsync(
-                        req.Persona.PrimerNombre,
-                        req.Persona.Correo,
-                        passwordPlano
-                    );
-
-                    if (!emailEnviado)
-                    {
-                        res.Resultado = false;
-                        res.Mensaje = "Persona registrada, pero falló el envío del correo.";
-                        return res;
-                    }
-
-                    res.Resultado = true;
-                    res.Mensaje = "Persona registrada y contraseña enviada exitosamente.";
-                    res.Persona = req.Persona;
-                    res.Persona.PersonaId = idReturn.Value;
                 }
             }
             catch (Exception ex)
@@ -257,8 +239,9 @@ namespace API.Services
                 string passActualEncriptada = utilitarios.Encriptar(req.ContrasenaActual);
                 string nuevaPassEncriptada = utilitarios.Encriptar(req.NuevaContrasena);
 
-                using (var conn = new SqlConnection(_connectionString))
-                using (var cmd = new SqlCommand("Actualizar_Contrasena", conn))
+                // Changed to NpgsqlConnection and NpgsqlCommand
+                using (var conn = new NpgsqlConnection(_connectionString))
+                using (var cmd = new NpgsqlCommand("Actualizar_Contrasena", conn))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
 
@@ -267,29 +250,34 @@ namespace API.Services
                     cmd.Parameters.AddWithValue("@contrasena_actual", passActualEncriptada);
                     cmd.Parameters.AddWithValue("@nueva_contrasena", nuevaPassEncriptada);
 
-                    // Parámetros de salida
-                    var paramError = new SqlParameter("@ErrorOccurred", SqlDbType.Int) { Direction = ParameterDirection.Output };
-                    var paramMensaje = new SqlParameter("@ErrorMensaje", SqlDbType.VarChar, 255) { Direction = ParameterDirection.Output };
-                    var paramResultado = new SqlParameter("@Resultado", SqlDbType.Bit) { Direction = ParameterDirection.Output };
-
-                    cmd.Parameters.Add(paramError);
-                    cmd.Parameters.Add(paramMensaje);
-                    cmd.Parameters.Add(paramResultado);
+                    // Parámetros de salida de MSSQL han sido removidos.
+                    // La función de PostgreSQL retorna una tabla con los campos de status + resultado.
 
                     await conn.OpenAsync();
-                    await cmd.ExecuteNonQueryAsync();
-
-                    int errorCode = Convert.ToInt32(paramError.Value);
-                    string mensaje = paramMensaje.Value?.ToString();
-                    bool resultado = paramResultado.Value != DBNull.Value && Convert.ToBoolean(paramResultado.Value);
-
-                    if (errorCode != 0 || !resultado)
+                    
+                    // Usar ExecuteReaderAsync para leer la fila de estado/ID retornada por la función.
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
-                        res.Resultado = false;
-                        res.Mensaje = "No se pudo actualizar la contraseña.";
-                        if (!string.IsNullOrEmpty(mensaje))
-                            res.ListaDeErrores.Add(mensaje);
-                        return res;
+                        int errorCode = 1;
+                        string mensaje = "No se pudo actualizar la contraseña (No response from DB).";
+                        bool resultado = false;
+                        
+                        if (await reader.ReadAsync())
+                        {
+                            // Lee la única fila que contiene los campos de status.
+                            errorCode = reader.IsDBNull(reader.GetOrdinal("erroroccurred")) ? 0 : reader.GetInt32(reader.GetOrdinal("erroroccurred"));
+                            mensaje = reader.IsDBNull(reader.GetOrdinal("errormensaje")) ? "" : reader.GetString(reader.GetOrdinal("errormensaje"));
+                            resultado = reader.IsDBNull(reader.GetOrdinal("resultado")) ? false : reader.GetBoolean(reader.GetOrdinal("resultado"));
+                        }
+                        
+                        if (errorCode != 0 || !resultado)
+                        {
+                            res.Resultado = false;
+                            res.Mensaje = "No se pudo actualizar la contraseña.";
+                            if (!string.IsNullOrEmpty(mensaje))
+                                res.ListaDeErrores.Add(mensaje);
+                            return res;
+                        }
                     }
 
                     res.Resultado = true;
@@ -321,11 +309,14 @@ namespace API.Services
 
             try
             {
-                using var conn = new SqlConnection(_connectionString);
-                using var cmd = new SqlCommand("SELECT COUNT(1) FROM Persona WHERE correo = @correo", conn);
+                // Changed to NpgsqlConnection and NpgsqlCommand
+                using var conn = new NpgsqlConnection(_connectionString);
+                // PostgreSQL uses $1, $2, etc., for positional parameters in raw SQL, but Npgsql allows @name.
+                using var cmd = new NpgsqlCommand("SELECT COUNT(1) FROM Persona WHERE correo = @correo", conn);
                 cmd.Parameters.AddWithValue("@correo", correo);
                 await conn.OpenAsync();
-                int count = (int)await cmd.ExecuteScalarAsync();
+                // Npgsql returns a long for COUNT()
+                long count = (long)await cmd.ExecuteScalarAsync();
                 res.Existe = count > 0;
                 res.Resultado = true;
             }
@@ -355,8 +346,9 @@ namespace API.Services
 
             try
             {
-                using var conn = new SqlConnection(_connectionString);
-                using var cmd = new SqlCommand("UPDATE Persona SET contraseña = @contraseña WHERE correo = @correo", conn);
+                // Changed to NpgsqlConnection and NpgsqlCommand
+                using var conn = new NpgsqlConnection(_connectionString);
+                using var cmd = new NpgsqlCommand("UPDATE Persona SET contraseña = @contraseña WHERE correo = @correo", conn);
                 cmd.Parameters.AddWithValue("@contraseña", nuevaContrasenaHash);
                 cmd.Parameters.AddWithValue("@correo", correo);
                 await conn.OpenAsync();
@@ -394,37 +386,35 @@ namespace API.Services
 
             try
             {
-                using var conn = new SqlConnection(_connectionString);
-                using var cmd = new SqlCommand("Login_Persona", conn);
-                cmd.CommandType = CommandType.StoredProcedure;
+                // Changed to NpgsqlConnection and NpgsqlCommand
+                using var conn = new NpgsqlConnection(_connectionString);
+                using var cmd = new NpgsqlCommand("SELECT * FROM login_persona(@p_email, @p_password)", conn);
+                cmd.CommandType = CommandType.Text;
 
                 // Encriptar la contraseña antes de enviarla
                 string passEncriptada = utilitarios.Encriptar(req.Contrasena);
 
                 // Parámetros de entrada
-                cmd.Parameters.AddWithValue("@email", req.Correo);
-                cmd.Parameters.AddWithValue("@password", passEncriptada);
+                cmd.Parameters.AddWithValue("p_email", NpgsqlTypes.NpgsqlDbType.Varchar, req.Correo);
+                cmd.Parameters.AddWithValue("p_password", NpgsqlTypes.NpgsqlDbType.Varchar, passEncriptada);
 
-                // Parámetros de salida
-                var paramErrorOccurred = new SqlParameter("@ErrorOccurred", System.Data.SqlDbType.Int) { Direction = System.Data.ParameterDirection.Output };
-                var paramErrorMensaje = new SqlParameter("@ErrorMensaje", System.Data.SqlDbType.VarChar, 255) { Direction = System.Data.ParameterDirection.Output };
-                var paramIdReturn = new SqlParameter("@idReturn", System.Data.SqlDbType.Int) { Direction = System.Data.ParameterDirection.Output };
-                var paramResultado = new SqlParameter("@resultado", System.Data.SqlDbType.Bit) { Direction = System.Data.ParameterDirection.Output };
-
-                cmd.Parameters.Add(paramErrorOccurred);
-                cmd.Parameters.Add(paramErrorMensaje);
-                cmd.Parameters.Add(paramIdReturn);
-                cmd.Parameters.Add(paramResultado);
+                // Parámetros de salida de MSSQL han sido removidos.
+                // La función de PostgreSQL retorna una tabla con los campos de persona + status.
 
                 await conn.OpenAsync();
 
                 using var reader = await cmd.ExecuteReaderAsync();
 
+                int errorOccurred = 1; // Default error
+                string errorMensaje = "No se obtuvo respuesta de la base de datos.";
+                bool resultado = false;
+                
                 if (await reader.ReadAsync())
                 {
+                    // Lee los datos de la persona
                     res.Persona = new Persona
                     {
-                        PersonaId = reader.GetInt32(reader.GetOrdinal("id_persona")),
+                        PersonaId = reader.IsDBNull(reader.GetOrdinal("id_persona")) ? 0 : reader.GetInt32(reader.GetOrdinal("id_persona")),
                         NumCedula = reader.IsDBNull(reader.GetOrdinal("num_cedula")) ? 0 : reader.GetInt32(reader.GetOrdinal("num_cedula")),
                         FechaNacimiento = reader.IsDBNull(reader.GetOrdinal("fecha_nacimiento")) ? DateTime.MinValue : reader.GetDateTime(reader.GetOrdinal("fecha_nacimiento")),
                         PrimerNombre = reader.IsDBNull(reader.GetOrdinal("primer_nombre")) ? "" : reader.GetString(reader.GetOrdinal("primer_nombre")),
@@ -435,20 +425,19 @@ namespace API.Services
                         Direccion = reader.IsDBNull(reader.GetOrdinal("direccion")) ? "" : reader.GetString(reader.GetOrdinal("direccion")),
                         Telefono1 = reader.IsDBNull(reader.GetOrdinal("telefono_1")) ? 0 : reader.GetInt32(reader.GetOrdinal("telefono_1")),
                         Telefono2 = reader.IsDBNull(reader.GetOrdinal("telefono_2")) ? 0 : reader.GetInt32(reader.GetOrdinal("telefono_2")),
-                        IdRol = reader.IsDBNull(reader.GetOrdinal("id_Rol")) ? 0 : reader.GetInt32(reader.GetOrdinal("id_Rol")),
+                        IdRol = reader.IsDBNull(reader.GetOrdinal("id_rol")) ? 0 : reader.GetInt32(reader.GetOrdinal("id_rol")),
                         Puesto = reader.IsDBNull(reader.GetOrdinal("puesto")) ? "" : reader.GetString(reader.GetOrdinal("puesto")),
                         CedulaResponsable = reader.IsDBNull(reader.GetOrdinal("cedula_responsable")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("cedula_responsable")),
-                        NombreRol = reader.IsDBNull(reader.GetOrdinal("nombre")) ? "" : reader.GetString(reader.GetOrdinal("nombre")),
+                        NombreRol = reader.IsDBNull(reader.GetOrdinal("nombre_rol")) ? "" : reader.GetString(reader.GetOrdinal("nombre_rol")),
                     };
+                    
+                    // Lee los parámetros de salida (Status) de la misma fila
+                    errorOccurred = reader.IsDBNull(reader.GetOrdinal("erroroccurred")) ? 0 : reader.GetInt32(reader.GetOrdinal("erroroccurred"));
+                    errorMensaje = reader.IsDBNull(reader.GetOrdinal("errormensaje")) ? "" : reader.GetString(reader.GetOrdinal("errormensaje"));
+                    resultado = reader.IsDBNull(reader.GetOrdinal("resultado")) ? false : reader.GetBoolean(reader.GetOrdinal("resultado"));
                 }
-
-                await reader.CloseAsync();
-
-                // Leer parámetros de salida
-                int errorOccurred = Convert.ToInt32(paramErrorOccurred.Value);
-                string errorMensaje = paramErrorMensaje.Value?.ToString();
-                bool resultado = paramResultado.Value != DBNull.Value && Convert.ToBoolean(paramResultado.Value);
-
+                
+                // Procesar Status
                 if (errorOccurred != 0 || !resultado)
                 {
                     res.Resultado = false;
@@ -461,6 +450,7 @@ namespace API.Services
             }
             catch (Exception ex)
             {
+                Console.WriteLine(ex.Message + "|" + ex.StackTrace);
                 res.Resultado = false;
                 res.Mensaje = "Error inesperado en el login.";
                 res.ListaDeErrores.Add(ex.Message);
@@ -481,35 +471,31 @@ namespace API.Services
         public async Task<ResOptenerPersona> ObtenerPersonaPorCorreoAsync(ReqObtenerPersona req)
         {
             var response = new ResOptenerPersona();
-
-            using (var conn = new SqlConnection(_connectionString))
-            using (var cmd = new SqlCommand("TraerInfoUsuario", conn))
+            
+            // Changed to NpgsqlConnection and NpgsqlCommand
+            using (var conn = new NpgsqlConnection(_connectionString))
+            using (var cmd = new NpgsqlCommand("TraerInfoUsuario", conn))
             {
                 cmd.CommandType = CommandType.StoredProcedure;
 
                 // Se pasan parámetros: Id y correo (correo puede ser null)
                 cmd.Parameters.AddWithValue("@id_persona", req.PersonaId == 0 ? (object)DBNull.Value : req.PersonaId);
-
-                // Si agregas Correo al ReqObtenerPersona, úsalo aquí:
                 cmd.Parameters.AddWithValue("@correo", string.IsNullOrEmpty(req.Correo) ? (object)DBNull.Value : req.Correo);
 
-                // Parámetros OUTPUT
-                var errorOccurredParam = new SqlParameter("@ErrorOccurred", SqlDbType.Int) { Direction = ParameterDirection.Output };
-                var errorMsgParam = new SqlParameter("@ErrorMensaje", SqlDbType.VarChar, 255) { Direction = ParameterDirection.Output };
-                var idReturnParam = new SqlParameter("@idReturn", SqlDbType.Int) { Direction = ParameterDirection.Output };
-                var resultadoParam = new SqlParameter("@resultado", SqlDbType.Bit) { Direction = ParameterDirection.Output };
-
-                cmd.Parameters.Add(errorOccurredParam);
-                cmd.Parameters.Add(errorMsgParam);
-                cmd.Parameters.Add(idReturnParam);
-                cmd.Parameters.Add(resultadoParam);
+                // Parámetros OUTPUT de MSSQL han sido removidos.
+                // La función de PostgreSQL retorna una tabla con los campos de persona + status.
 
                 await conn.OpenAsync();
 
                 using (var reader = await cmd.ExecuteReaderAsync())
                 {
+                    int errorOccurred = 1;
+                    string errorMsg = "No se obtuvo respuesta de la base de datos.";
+                    bool resultado = false;
+                    
                     if (await reader.ReadAsync())
                     {
+                        // Lee los datos de la persona
                         response.Persona = new Persona
                         {
                             PersonaId = reader.GetInt32(reader.GetOrdinal("id_persona")),
@@ -524,19 +510,24 @@ namespace API.Services
                             Direccion = reader.IsDBNull(reader.GetOrdinal("direccion")) ? null : reader.GetString(reader.GetOrdinal("direccion")),
                             Telefono1 = reader.IsDBNull(reader.GetOrdinal("telefono_1")) ? 0 : reader.GetInt32(reader.GetOrdinal("telefono_1")),
                             Telefono2 = reader.IsDBNull(reader.GetOrdinal("telefono_2")) ? 0 : reader.GetInt32(reader.GetOrdinal("telefono_2")),
-                            IdRol = reader.GetInt32(reader.GetOrdinal("id_Rol")),
+                            IdRol = reader.GetInt32(reader.GetOrdinal("id_rol")),
                             Puesto = reader.IsDBNull(reader.GetOrdinal("puesto")) ? null : reader.GetString(reader.GetOrdinal("puesto")),
                             CedulaResponsable = reader.IsDBNull(reader.GetOrdinal("cedula_responsable")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("cedula_responsable")),
                             NombreRol = reader.IsDBNull(reader.GetOrdinal("nombre_rol")) ? "" : reader.GetString(reader.GetOrdinal("nombre_rol"))
 
                         };
+                        
+                        // Lee los parámetros de salida (Status) de la misma fila
+                        errorOccurred = reader.IsDBNull(reader.GetOrdinal("erroroccurred")) ? 0 : reader.GetInt32(reader.GetOrdinal("erroroccurred"));
+                        errorMsg = reader.IsDBNull(reader.GetOrdinal("errormensaje")) ? "" : reader.GetString(reader.GetOrdinal("errormensaje"));
+                        resultado = reader.IsDBNull(reader.GetOrdinal("resultado")) ? false : reader.GetBoolean(reader.GetOrdinal("resultado"));
                     }
+                    
+                    response.Resultado = resultado;
+                    response.ListaDeErrores = new List<string>();
+                    if (errorOccurred == 1)
+                        response.ListaDeErrores.Add(errorMsg ?? "Error desconocido");
                 }
-
-                response.Resultado = (bool)resultadoParam.Value;
-                response.ListaDeErrores = new List<string>();
-                if ((int)errorOccurredParam.Value == 1)
-                    response.ListaDeErrores.Add(errorMsgParam.Value.ToString() ?? "Error desconocido");
             }
 
             return response;
@@ -554,8 +545,10 @@ namespace API.Services
 
             try
             {
-                using (var con = new SqlConnection(_connectionString))
-                using (var cmd = new SqlCommand("dbo.ActualizarPerfilPersona", con))
+                // Changed to NpgsqlConnection and NpgsqlCommand
+                using (var con = new NpgsqlConnection(_connectionString))
+                // Note: The original code used 'dbo.ActualizarPerfilPersona'. PostgreSQL does not use 'dbo.' schema prefix.
+                using (var cmd = new NpgsqlCommand("ActualizarPerfilPersona", con))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
 
@@ -571,29 +564,34 @@ namespace API.Services
                     cmd.Parameters.AddWithValue("@telefono_1", req.Telefono1);
                     cmd.Parameters.AddWithValue("@telefono_2", (object?)req.Telefono2 ?? DBNull.Value);
 
-                    // Parámetros de salida para manejar errores
-                    var paramErrorOccurred = new SqlParameter("@ErrorOccurred", SqlDbType.Int) { Direction = ParameterDirection.Output };
-                    var paramErrorMensaje = new SqlParameter("@ErrorMensaje", SqlDbType.VarChar, 255) { Direction = ParameterDirection.Output };
+                    // Parámetros de salida de MSSQL han sido removidos.
+                    // La función de PostgreSQL retorna una tabla con los campos de status.
 
-                    cmd.Parameters.Add(paramErrorOccurred);
-                    cmd.Parameters.Add(paramErrorMensaje);
-
-                    // Ejecutar el procedimiento almacenado
+                    // Ejecutar la función y leer el resultado
                     await con.OpenAsync();
-                    await cmd.ExecuteNonQueryAsync();
-
-                    int errorOccurred = (int)paramErrorOccurred.Value;
-                    string errorMensaje = paramErrorMensaje.Value?.ToString() ?? "";
-
-                    // Evaluar si hubo error
-                    if (errorOccurred == 1)
+                    
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
-                        res.Resultado = false;
-                        res.ListaDeErrores.Add(errorMensaje);
-                    }
-                    else
-                    {
-                        res.Resultado = true;
+                        int errorOccurred = 1;
+                        string errorMensaje = "No se obtuvo respuesta de la base de datos.";
+                        
+                        if (await reader.ReadAsync())
+                        {
+                            // Lee la única fila que contiene los campos de status.
+                            errorOccurred = reader.IsDBNull(reader.GetOrdinal("erroroccurred")) ? 0 : reader.GetInt32(reader.GetOrdinal("erroroccurred"));
+                            errorMensaje = reader.IsDBNull(reader.GetOrdinal("errormensaje")) ? "" : reader.GetString(reader.GetOrdinal("errormensaje"));
+                        }
+                        
+                        // Evaluar si hubo error
+                        if (errorOccurred == 1)
+                        {
+                            res.Resultado = false;
+                            res.ListaDeErrores.Add(errorMensaje);
+                        }
+                        else
+                        {
+                            res.Resultado = true;
+                        }
                     }
                 }
             }
@@ -605,9 +603,5 @@ namespace API.Services
 
             return res;
         }
-
-
-
     }
 }
-

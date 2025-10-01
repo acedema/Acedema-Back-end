@@ -3,11 +3,12 @@ using API.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using TuProyecto.Servicios;
 
 var builder = WebApplication.CreateBuilder(args);
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var key = System.Text.Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]);
+var key = Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]);
 
 // Carga configuración de appsettings.json y variables de entorno
 builder.Configuration
@@ -19,7 +20,7 @@ builder.Services.AddControllers();
 
 // 2) Registra tu DbContext con SQL Server
 builder.Services.AddDbContext<MyDbContext>(opt =>
-    opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 
 // 3) Registra la lógica de negocio para inyección de dependencias
@@ -56,7 +57,7 @@ builder.Services.AddCors(options =>
             .WithOrigins("http://localhost:3000")   // Cambia al origen de tu frontend
             .AllowAnyHeader()
             .AllowAnyMethod();
-        // .AllowCredentials(); // si necesitas enviar cookies o auth
+            // .AllowCredentials(); // si necesitas enviar cookies o auth
     });
 });
 // ───────────────────────────────────────────────────────────────────────────────
@@ -106,4 +107,3 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-
