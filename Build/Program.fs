@@ -3,8 +3,7 @@ module Program
 open Fake.Core
 open Fake.IO
 open System.IO
-open System.Text
-open Argu
+open Fake.DotNet
 open System
 open Fake.Core
 open Fake.IO
@@ -42,6 +41,42 @@ let clean _ =
     |> Seq.collect (fun p -> [ "bin"; "obj" ] |> Seq.map (fun sp -> IO.Path.GetDirectoryName p </> sp))
     |> Shell.cleanDirs
 
+let disableBinLog (p: MSBuild.CliArguments) = { p with DisableInternalBinLog = true }
+
+let configuration (targets: Target list) =
+    let defaultVal = "Debug"
+
+    match Environment.environVarOrDefault "CONFIGURATION" defaultVal with
+    | "Debug" -> DotNet.BuildConfiguration.Debug
+    | "Release" -> DotNet.BuildConfiguration.Release
+    | config -> DotNet.BuildConfiguration.Custom config
+
+let dotnetRestore _ =
+    [ solutionRoot.Value.ToString() ]
+    |> Seq.map (fun dir ->
+        fun () ->
+            let args = [] |> String.concat " "
+
+            DotNet.restore
+                (fun c ->
+                    { c with
+                        MSBuildParams = disableBinLog c.MSBuildParams
+                        Common = c.Common |> DotNet.Options.withCustomParams (Some(args))
+                    })
+                dir)
+    |> Seq.iter (fun fn -> fn ())
+
+let dotnetBuild ctx =
+    DotNet.build
+        (fun c ->
+            { c with
+                MSBuildParams = disableBinLog c.MSBuildParams
+                Configuration = configuration (ctx.Context.AllExecutingTargets)
+                Common = c.Common
+
+            })
+        (solutionRoot.Value.ToString())
+
 let initTargets () =
     // BuildServer.install [ GitHubActions.Installer ]
 
@@ -60,62 +95,59 @@ let initTargets () =
     //-----------------------------------------------------------------------------
 
     Target.create "Clean" clean
-// Target.create "DotnetRestore" dotnetRestore
-// Target.create "UpdateChangelog" updateChangelog
-// Target.createBuildFailure "RevertChangelog" revertChangelog // Do NOT put this in the dependency chain
-// Target.createFinal "DeleteChangelogBackupFile" deleteChangelogBackupFile // Do NOT put this in the dependency chain
-// Target.create "DotnetBuild" dotnetBuild
-// Target.create "IntegrationTests" integrationTests
-// Target.create "DotnetPack" dotnetPack
-// Target.create "PublishToNuGet" publishToNuget
-// Target.create "GitRelease" gitRelease
-// Target.create "GitHubRelease" githubRelease
-// Target.create "FormatCode" formatCode
-// Target.create "CheckFormatCode" checkFormatCode
-// Target.create "Release" ignore // For local
-// Target.create "Publish" ignore //For CI
-// Target.create "CleanDocsCache" cleanDocsCache
-// Target.create "BuildDocs" buildDocs
-// Target.create "WatchDocs" watchDocs
+    Target.create "DotnetRestore" dotnetRestore
+    // Target.create "UpdateChangelog" updateChangelog
+    // Target.createBuildFailure "RevertChangelog" revertChangelog // Do NOT put this in the dependency chain
+    // Target.createFinal "DeleteChangelogBackupFile" deleteChangelogBackupFile // Do NOT put this in the dependency chain
+    Target.create "DotnetBuild" dotnetBuild
+    // Target.create "IntegrationTests" integrationTests
+    // Target.create "DotnetPack" dotnetPack
+    // Target.create "PublishToNuGet" publishToNuget
+    // Target.create "GitRelease" gitRelease
+    // Target.create "GitHubRelease" githubRelease
+    // Target.create "FormatCode" formatCode
+    // Target.create "CheckFormatCode" checkFormatCode
+    // Target.create "Release" ignore // For local
+    // Target.create "Publish" ignore //For CI
+    // Target.create "CleanDocsCache" cleanDocsCache
+    // Target.create "BuildDocs" buildDocs
+    // Target.create "WatchDocs" watchDocs
 
-//-----------------------------------------------------------------------------
-// Target Dependencies
-//-----------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------
+    // Target Dependencies
+    //-----------------------------------------------------------------------------
 
-// // Only call Clean if DotnetPack was in the call chain
-// // Ensure Clean is called before DotnetRestore
-// "Clean"
-// ?=>! "DotnetRestore"
-//
-// "Clean"
-// ==>! "DotnetPack"
-//
-// // Only call UpdateChangelog if GitRelease was in the call chain
-// // Ensure UpdateChangelog is called after DotnetRestore and before DotnetBuild
-// "DotnetRestore"
-// ?=> "UpdateChangelog"
-// ?=>! "DotnetBuild"
-//
-// "CleanDocsCache"
-// ==>! "BuildDocs"
-//
-// "DotnetBuild"
-// ?=>! "BuildDocs"
-//
-// "DotnetBuild"
-// ==>! "BuildDocs"
-//
-// "DotnetBuild"
-// ==>! "WatchDocs"
-//
-// "UpdateChangelog"
-// ==> "GitRelease"
-// ==>! "Release"
-//
-// "DotnetRestore"
-// =?> ("CheckFormatCode", isCI.Value)
-// ==> "DotnetBuild"
-// ==>! "DotnetPack"
+    // // Only call Clean if DotnetPack was in the call chain
+    // // Ensure Clean is called before DotnetRestore
+    "Clean" ?=>! "DotnetRestore"
+
+    //
+    // "Clean"
+    // ==>! "DotnetPack"
+    //
+    // // Only call UpdateChangelog if GitRelease was in the call chain
+    // // Ensure UpdateChangelog is called after DotnetRestore and before DotnetBuild
+    // "DotnetRestore"
+    // ?=> "UpdateChangelog"
+    // ?=>! "DotnetBuild"
+    //
+    // "CleanDocsCache"
+    // ==>! "BuildDocs"
+    //
+    // "DotnetBuild"
+    // ?=>! "BuildDocs"
+    //
+    // "DotnetBuild"
+    // ==>! "BuildDocs"
+    //
+    // "DotnetBuild"
+    // ==>! "WatchDocs"
+    //
+    // "UpdateChangelog"
+    // ==> "GitRelease"
+    // ==>! "Release"
+    //
+    "DotnetRestore" ==> "DotnetBuild"
 //
 // "DotnetPack"
 // ==>! "IntegrationTests"
@@ -134,6 +166,6 @@ let main argv =
     |> Context.setExecutionContext
 
     initTargets ()
-    Target.runOrDefaultWithArguments ("Clean")
+    Target.runOrDefaultWithArguments ("DotnetBuild")
 
     0 // return an integer exit code
