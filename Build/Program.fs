@@ -66,6 +66,21 @@ let dotnetRestore _ =
                 dir)
     |> Seq.iter (fun fn -> fn ())
 
+let dotnetPublish _ =
+    [ solutionRoot.Value.ToString() ]
+    |> Seq.map (fun dir ->
+        fun () ->
+            let args = [] |> String.concat " "
+
+            DotNet.publish
+                (fun c ->
+                    { c with
+                        MSBuildParams = disableBinLog c.MSBuildParams
+                        Common = c.Common |> DotNet.Options.withCustomParams (Some(args))
+                    })
+                dir)
+    |> Seq.iter (fun fn -> fn ())
+
 let dotnetBuild ctx =
     DotNet.build
         (fun c ->
@@ -108,7 +123,7 @@ let initTargets () =
     // Target.create "FormatCode" formatCode
     // Target.create "CheckFormatCode" checkFormatCode
     // Target.create "Release" ignore // For local
-    // Target.create "Publish" ignore //For CI
+    Target.create "Publish" dotnetPublish //For CI
     // Target.create "CleanDocsCache" cleanDocsCache
     // Target.create "BuildDocs" buildDocs
     // Target.create "WatchDocs" watchDocs
