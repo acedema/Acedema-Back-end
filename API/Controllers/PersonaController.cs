@@ -16,7 +16,7 @@ namespace API.Controllers
     {
         private readonly LogicaUtilitarios _logicaUtilitarios;
         private readonly LogicaPersona _logica;
-        private readonly IConfiguration _configuration;
+        private readonly IConfiguration _configuration;     
         private readonly JwtTokenHelper _jwtHelper;
 
         public PersonaController(LogicaPersona logica, LogicaUtilitarios logicaUtilitarios, IConfiguration configuration, JwtTokenHelper jwtHelper)
@@ -90,17 +90,23 @@ namespace API.Controllers
         [HttpPost("registrarPersona")]
         public async Task<ActionResult<ResRegistrarPersona>> RegistrarPersona([FromBody] ReqRegistrarPersona req)
         {
+            Console.WriteLine("Registration Started");
             if (req is null)
+                
                 return BadRequest(new ResRegistrarPersona {
+                    
                     Resultado = false,
                     ListaDeErrores = new List<string> { "Request nulo" }
+                    
                 });
 
             var result = await _logica.RegistrarPersonaAsync(req);
+            Console.WriteLine("Registration 2");
             if (!result.Resultado)
                 return BadRequest(result);
             return Ok(result);
-
+            
+            
         }
 
         /// <summary>
