@@ -12,6 +12,7 @@ namespace API.Services
     public class LogicaUtilitarios
     {
         private readonly IConfiguration _configuration;
+        private readonly ILogger<LogicaUtilitarios> _logger = new LoggerFactory().CreateLogger<LogicaUtilitarios>();
 
         public LogicaUtilitarios(IConfiguration configuration)
         {
@@ -134,8 +135,9 @@ namespace API.Services
 
                 return response.IsSuccessStatusCode;
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, ex.Message);
                 return false;
             }
         }

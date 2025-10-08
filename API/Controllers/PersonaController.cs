@@ -3,10 +3,9 @@ using API.Models.Request;
 using API.Models.Response;
 using API.Services;
 using System.Security.Claims;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims; 
+using API.Utils;
 
 namespace API.Controllers
 {
@@ -18,63 +17,47 @@ namespace API.Controllers
         private readonly LogicaPersona _logica;
         private readonly IConfiguration _configuration;     
         private readonly JwtTokenHelper _jwtHelper;
+        private readonly ILogger<PersonaController> _logger;
 
-        public PersonaController(LogicaPersona logica, LogicaUtilitarios logicaUtilitarios, IConfiguration configuration, JwtTokenHelper jwtHelper)
+        public PersonaController(LogicaPersona logica, LogicaUtilitarios logicaUtilitarios, IConfiguration configuration, JwtTokenHelper jwtHelper, ILogger<PersonaController> logger)
         {
             _configuration = configuration;
             _logica = logica;
             _logicaUtilitarios = logicaUtilitarios;
             _jwtHelper = jwtHelper;
+            _logger = logger;
         }
 
 
         /// <summary>
         /// Obtiene los datos de una persona a partir del ID proporcionado.
         /// </summary>
-        /// <param name="req">Objeto que contiene el ID de la persona.</param>
+        /// <param name="personaId"></param>
         /// <returns>Respuesta con los datos de la persona o los errores ocurridos.</returns>
-        // POST api/persona/obtenerPersona
         [Authorize]
-        [HttpPost("obtenerPersona")]
-        public async Task<ActionResult<ResOptenerPersona>> ObtenerPersona([FromBody] ReqObtenerPersona req)
+        [HttpGet("obtenerPersona/{personaId:int}")]
+        public async Task<ActionResult<ResOptenerPersona>> ObtenerPersona([FromRoute] int personaId)
         {
-            if (req is null)
-            {
-                return BadRequest(new ResOptenerPersona
-                {
-                    Resultado = false,
-                    ListaDeErrores = new List<string> { "Request nulo" }
-                });
-            }
+            var result = await _logica.ObtenerPersona(personaId);
 
-            var result = await _logica.ObtenerPersonaAsync(req);
-
-            if (!result.Resultado)
-                return BadRequest(result);
+            if (!result.Resultado) return NotFound(result);
 
             return Ok(result);
         }
 
         [Authorize]
         [HttpGet("obtenerMiPerfil")]
-        public async Task<ActionResult<ResOptenerPersona>> obtenerMiPerfil()
+        public async Task<ActionResult<ResOptenerPersona>> ObtenerMiPerfil()
         {
-            // Obtener correo del token
-            var correo = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+            var email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
 
-            if (string.IsNullOrEmpty(correo))
-                return Unauthorized("Token inválido o correo no encontrado.");
+            if (string.IsNullOrEmpty(email)) return Unauthorized();
+            
+            if (!Validator.IsValidEmail(email)) return BadRequest("Correo invalido");
 
-            var req = new ReqObtenerPersona
-            {
-                PersonaId = 0, // No usar id, se busca por correo
-                Correo = correo
-            };
+            var resultado = await _logica.ObtenerPersonaPorCorreoAsync(email);
 
-            var resultado = await _logica.ObtenerPersonaPorCorreoAsync(req);
-
-            if (!resultado.Resultado)
-                return NotFound(resultado);
+            if (!resultado.Resultado) return NotFound(resultado);
 
             return Ok(resultado);
         }
@@ -85,28 +68,16 @@ namespace API.Controllers
         /// </summary>
         /// <param name="req">Datos de la persona a registrar.</param>
         /// <returns>Resultado del registro incluyendo errores o el ID generado.</returns>
-        // POST api/persona/registrarPersona
         [Authorize]
         [HttpPost("registrarPersona")]
-        public async Task<ActionResult<ResRegistrarPersona>> RegistrarPersona([FromBody] ReqRegistrarPersona req)
+        public async Task<ActionResult<ResRegistrarPersona>> RegistrarPersona([FromBody] ReqRegistrarPersona? req)
         {
-            Console.WriteLine("Registration Started");
-            if (req is null)
-                
-                return BadRequest(new ResRegistrarPersona {
-                    
-                    Resultado = false,
-                    ListaDeErrores = new List<string> { "Request nulo" }
-                    
-                });
+            if (req is null) return BadRequest();
 
             var result = await _logica.RegistrarPersonaAsync(req);
-            Console.WriteLine("Registration 2");
-            if (!result.Resultado)
-                return BadRequest(result);
+            
+            if (!result.Resultado) return BadRequest(result);
             return Ok(result);
-            
-            
         }
 
         /// <summary>
@@ -116,13 +87,15 @@ namespace API.Controllers
         /// <returns>Resultado del proceso de actualización de la contraseña.</returns>
         [HttpPost("actualizarContrasena")]
         [Authorize]
-        public async Task<ActionResult<ResRestablecerContrasena>> ActualizarContrasena([FromBody] ReqRestablecerContrasena req)
+        public async Task<ActionResult<ResRestablecerContrasena>> ActualizarContrasena([FromBody] ReqRestablecerContrasena? req)
         {
-            if (req == null)
-                return BadRequest(new ResRestablecerContrasena { Resultado = false, ListaDeErrores = new List<string> { "Request nulo" } });
+            if (req == null) return BadRequest();
+            
+            if (!Validator.IsValidEmail(req.Correo)) return BadRequest("Correo invalido");
 
             var res = await _logica.ActualizarContrasenaAsync(req);
-            return Ok(res);
+            if(res.Resultado) return Ok(res);
+            return Unauthorized(res);
         }
 
         /// <summary>
@@ -141,13 +114,12 @@ namespace API.Controllers
             if (req == null || string.IsNullOrWhiteSpace(req.Correo))
                 return BadRequest("El correo es obligatorio.");
 
-            var resExiste = await _logica.ExistePersonaPorCorreoAsync(req.Correo);
+            var resExiste = await _logica.ObtenerPersonaPorCorreoAsync(req.Correo);
 
             if (!resExiste.Resultado)
-                return StatusCode(500, "Error al verificar el correo.");
-
-            if (!resExiste.Existe)
-                return NotFound("Correo no registrado.");
+            {
+                return BadRequest("Correo no esta registrado.");
+            }
 
             var token = _jwtHelper.GenerarTokenRestablecer(req.Correo);
 
@@ -165,42 +137,28 @@ namespace API.Controllers
         /// <summary>
         /// Restablece la contraseña de un usuario utilizando un token JWT de recuperación.
         /// </summary>
-        /// <param name="req">Objeto que contiene el token JWT y la nueva contraseña.</param>
+        /// <param name="req">Objeto que contiene la nueva contraseña.</param>
         /// <returns>
         /// - 200 OK si la contraseña se actualizó correctamente.  
         /// - 400 BadRequest si faltan datos, el token es inválido o la contraseña es muy corta.  
         /// - 500 InternalServerError si ocurre un error al actualizar la contraseña.
         /// </returns>
+        [Authorize]
         [HttpPost("restablecer-con-token")]
-        public async Task<IActionResult> RestablecerConToken ([FromBody] ReqRestablecerConToken req)
+        public async Task<IActionResult> RestablecerConToken ([FromBody] ReqRestablecerConToken? req)
         {
-            if (req == null || string.IsNullOrWhiteSpace(req.Token) || string.IsNullOrWhiteSpace(req.NuevaContrasena))
-                return BadRequest("Token y nueva contraseña son obligatorios.");
+            if (req?.NuevaContrasena is null) return BadRequest();
+            
+            var email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+            
+            _logger.LogDebug("Email en token :: {}", email);
+            
+            if(email is null || !Validator.IsValidEmail(email)) return Unauthorized();
 
-            try
-            {
-                var claims = _jwtHelper.ValidarToken(req.Token);
-                var correo = claims.FindFirst(ClaimTypes.Email)?.Value;
-
-                if (string.IsNullOrEmpty(correo))
-                    return BadRequest("Token inválido.");
-
-                if (req.NuevaContrasena.Length < 8)
-                    return BadRequest("La nueva contraseña debe tener al menos 8 caracteres.");
-
-                var utilitarios = new LogicaUtilitarios(_configuration);
-                string nuevaPassHash = utilitarios.Encriptar(req.NuevaContrasena);
-
-                var resultado = await _logica.ActualizarContrasenaPorCorreoAsync(correo, nuevaPassHash);
-                if (!resultado.Resultado)
-                    return StatusCode(500, $"Error actualizando la contraseña: {string.Join(", ", resultado.ListaDeErrores)}");
-
-                return Ok("Contraseña restablecida con éxito.");
-            }
-            catch (SecurityTokenException ex)
-            {
-                return BadRequest($"Token inválido o expirado: {ex.Message}");
-            }
+            var res = await _logica.ActualizarContrasenaPorCorreo(email, req.NuevaContrasena);
+            
+            if(!res.Resultado) return Unauthorized(res);
+            return Ok(res);
         }
 
 
@@ -250,8 +208,7 @@ namespace API.Controllers
                     resLogin.Persona.SegundoApellido,
                     resLogin.Persona.Correo,
                     resLogin.Persona.IdRol,
-                    resLogin.Persona.Puesto,
-                    resLogin.Persona.NombreRol // También lo puedes enviar si quieres
+                    resLogin.Persona.Puesto
 
                 }
             });
@@ -265,36 +222,21 @@ namespace API.Controllers
         /// <returns>Resultado de la operación</returns>
         [Authorize]
         [HttpPut("actualizarMiPerfil")]
-        public async Task<IActionResult> ActualizarMiPerfil([FromBody] ReqActualizarPerfil req)
+        public async Task<IActionResult> ActualizarMiPerfil([FromBody] ReqActualizarPerfil? req)
         {
-            if (req == null)
-                return BadRequest("Request nulo.");
+            if (req is null) return BadRequest();
+            
+            var email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+            
+            _logger.LogDebug("Email en token :: {}", email);
+            
+            if(email is null || !Validator.IsValidEmail(email)) return Unauthorized();
 
-            var correoToken = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+            var resultado = await _logica.ActualizarPerfilAsync(email, req);
 
-            if (string.IsNullOrEmpty(correoToken))
-                return Unauthorized("Token inválido.");
+            if (!resultado.Resultado) return BadRequest(resultado);
 
-            if (!string.Equals(req.Correo, correoToken, StringComparison.OrdinalIgnoreCase))
-                return Forbid("No puede actualizar datos de otro usuario.");
-
-            // ✅ Obtener PersonaId real desde el correo
-            var personaActual = await _logica.ObtenerPersonaPorCorreoAsync(new ReqObtenerPersona
-            {
-                Correo = correoToken
-            });
-
-            if (!personaActual.Resultado || personaActual.Persona == null)
-                return NotFound("No se encontró la persona asociada al token.");
-
-            req.PersonaId = personaActual.Persona.PersonaId;
-
-            var resultado = await _logica.ActualizarPerfilAsync(req);
-
-            if (!resultado.Resultado)
-                return BadRequest(resultado);
-
-            return Ok(new { mensaje = "Perfil actualizado correctamente." });
+            return Ok("Perfil actualizado correctamente.");
         }
 
 

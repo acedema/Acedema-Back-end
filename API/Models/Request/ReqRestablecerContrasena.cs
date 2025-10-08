@@ -2,8 +2,8 @@
 {
     public class ReqRestablecerContrasena
     {
-        public string Correo { get; set; }
-        public string ContrasenaActual { get; set; }
-        public string NuevaContrasena { get; set; }
+        public required string Correo { get; set; }
+        public required string ContrasenaActual { get; set; }
+        public required string NuevaContrasena { get; set; }
     }
 }

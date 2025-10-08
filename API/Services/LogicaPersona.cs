@@ -1,9 +1,9 @@
-﻿using API.Data;
-using API.Models.Entities;
+﻿using API.Models.Entities;
 using API.Models.Request;
 using API.Models.Response;
-using Npgsql; // Changed from Microsoft.Data.SqlClient
+using Npgsql;
 using System.Data;
+using Dapper;
 
 namespace API.Services
 {
@@ -13,6 +13,7 @@ namespace API.Services
     /// </summary>
     public class LogicaPersona
     {
+        private readonly ILogger<LogicaPersona> _logger;
         private readonly string _connectionString;
         private readonly IConfiguration _configuration;
 
@@ -20,16 +21,17 @@ namespace API.Services
         /// Constructor que recibe la configuración del sistema.
         /// </summary>
         /// <param name="configuration">Configuración de la aplicación, usada para obtener la cadena de conexión.</param>
-        public LogicaPersona(IConfiguration configuration)
+        public LogicaPersona(IConfiguration configuration, ILogger<LogicaPersona> logger)
         {
             _configuration = configuration;
+            _logger = logger;
             _connectionString = configuration.GetConnectionString("DefaultConnection");
         }
 
         /// <summary>
         /// Obtiene la información detallada de una persona a partir de su ID.
         /// </summary>
-        /// <param name="req">Objeto con el ID de la persona a consultar.</param>
+        /// <param name="personaId"></param>
         /// <returns>
         /// Objeto <see cref="ResOptenerPersona"/> que contiene los datos de la persona,
         /// un mensaje de estado, el resultado de la operación y posibles errores.
@@ -39,107 +41,140 @@ namespace API.Services
         /// sus parámetros de salida. También maneja excepciones y errores personalizados
         /// definidos en el SP.
         /// </remarks>
-        public async Task<ResOptenerPersona> ObtenerPersonaAsync(ReqObtenerPersona req)
+        public async Task<ResOptenerPersona> ObtenerPersona(int personaId)
         {
+            _logger.LogDebug("Obtener Persona Inicio :: {}", personaId);
+
             var res = new ResOptenerPersona();
+            const string sql = """
+                               SELECT 
+                               p.id_persona AS PersonaId,
+                               p.num_cedula AS NumCedula,
+                               p.fecha_nacimiento AS FechaNacimiento,
+                               p.primer_nombre AS PrimerNombre,
+                               p.segundo_nombre AS SegundoNombre,
+                               p.primer_apellido AS PrimerApellido,
+                               p.segundo_apellido AS SegundoApellido,
+                               p.correo AS Correo,
+                               p.direccion AS Direccion,
+                               p.telefono_1 AS Telefono1,
+                               p.telefono_2 AS Telefono2,
+                               p.fecha_registro AS FechaRegistro,
+                               p.id_rol AS IdRol,
+                               r.nombre AS NombreRol,
+                               p.puesto AS Puesto,
+                               p.cedula_responsable AS CedulaResponsable 
+                               FROM persona p
+                               INNER JOIN Roles r ON p.id_Rol = r.id_rol
+                               WHERE p.id_persona = @personaId
+                               """;
 
             try
             {
                 using (var conn = new NpgsqlConnection(_connectionString))
-                using (var cmd = new NpgsqlCommand(@" SELECT * FROM traerinfousuario(@id_persona);", conn))
                 {
-                    cmd.CommandType = CommandType.Text;
-
-                    cmd.Parameters.AddWithValue("id_persona", req.PersonaId);
-
-                    await conn.OpenAsync();
-                    
-                    using (var reader = await cmd.ExecuteReaderAsync())
-                    {
-                        if (await reader.ReadAsync())
-                        {
-                            res.Persona = new Persona
-                            {
-                                PersonaId = reader.IsDBNull(reader.GetOrdinal("id_persona"))
-                                    ? 0
-                                    : reader.GetInt32(reader.GetOrdinal("id_persona")),
-                                NumCedula = reader.IsDBNull(reader.GetOrdinal("num_cedula"))
-                                    ? 0
-                                    : reader.GetInt32(reader.GetOrdinal("num_cedula")),
-                                FechaNacimiento = reader.IsDBNull(reader.GetOrdinal("fecha_nacimiento"))
-                                    ? DateTime.MinValue
-                                    : reader.GetDateTime(reader.GetOrdinal("fecha_nacimiento")),
-                                PrimerNombre = reader.IsDBNull(reader.GetOrdinal("primer_nombre"))
-                                    ? string.Empty
-                                    : reader.GetString(reader.GetOrdinal("primer_nombre")),
-                                SegundoNombre = reader.IsDBNull(reader.GetOrdinal("segundo_nombre"))
-                                    ? null
-                                    : reader.GetString(reader.GetOrdinal("segundo_nombre")),
-                                PrimerApellido = reader.IsDBNull(reader.GetOrdinal("primer_apellido"))
-                                    ? string.Empty
-                                    : reader.GetString(reader.GetOrdinal("primer_apellido")),
-                                SegundoApellido = reader.IsDBNull(reader.GetOrdinal("segundo_apellido"))
-                                    ? string.Empty
-                                    : reader.GetString(reader.GetOrdinal("segundo_apellido")),
-                                Correo = reader.IsDBNull(reader.GetOrdinal("correo"))
-                                    ? string.Empty
-                                    : reader.GetString(reader.GetOrdinal("correo")),
-                                Password = reader.IsDBNull(reader.GetOrdinal("contraseña"))
-                                    ? null
-                                    : reader.GetString(reader.GetOrdinal("contraseña")),
-                                Direccion = reader.IsDBNull(reader.GetOrdinal("direccion"))
-                                    ? string.Empty
-                                    : reader.GetString(reader.GetOrdinal("direccion")),
-                                Telefono1 = reader.IsDBNull(reader.GetOrdinal("telefono_1"))
-                                    ? 0
-                                    : reader.GetInt32(reader.GetOrdinal("telefono_1")),
-                                Telefono2 = reader.IsDBNull(reader.GetOrdinal("telefono_2"))
-                                    ? 0
-                                    : reader.GetInt32(reader.GetOrdinal("telefono_2")),
-                                IdRol = reader.IsDBNull(reader.GetOrdinal("id_rol"))
-                                    ? 0
-                                    : reader.GetInt32(reader.GetOrdinal("id_rol")),
-                                Puesto = reader.IsDBNull(reader.GetOrdinal("puesto"))
-                                    ? string.Empty
-                                    : reader.GetString(reader.GetOrdinal("puesto")),
-                                CedulaResponsable = reader.IsDBNull(reader.GetOrdinal("cedula_responsable"))
-                                    ? (int?)null
-                                    : reader.GetInt32(reader.GetOrdinal("cedula_responsable"))
-                            };
-
-                            // Leer los valores de Status/Error desde las mismas columnas de la fila
-                            int errorCode = reader.IsDBNull(reader.GetOrdinal("erroroccurred"))
-                                ? 0
-                                : reader.GetInt32(reader.GetOrdinal("erroroccurred"));
-                            string mensaje = reader.IsDBNull(reader.GetOrdinal("errormensaje"))
-                                ? ""
-                                : reader.GetString(reader.GetOrdinal("errormensaje"));
-                            bool resultado = reader.IsDBNull(reader.GetOrdinal("resultado"))
-                                ? false
-                                : reader.GetBoolean(reader.GetOrdinal("resultado"));
-
-                            if (errorCode != 0 || !resultado)
-                            {
-                                res.Resultado = false;
-                                res.Mensaje = "No se pudo obtener la persona.";
-                                if (!string.IsNullOrEmpty(mensaje))
-                                    res.ListaDeErrores.Add(mensaje);
-                                return res;
-                            }
-                        }
-                    }
+                    res.Persona = await conn.QueryFirstOrDefaultAsync<Persona>(sql, new { personaId });
 
                     res.Resultado = true;
-                    res.Mensaje = "Persona encontrada correctamente.";
+                    res.Mensaje = res.Persona != null
+                        ? "Persona encontrada correctamente."
+                        : "No se encontró ninguna persona.";
+                    if (res.Persona != null)
+                        _logger.LogDebug("Persona encontrada correctamente con id :: {}", personaId);
+                    else _logger.LogError("No se encontró ninguna persona con id :: {}", personaId);
                 }
+            }
+
+            catch (NpgsqlException ex)
+            {
+                _logger.LogError(ex, ex.Message);
+
+                res.Resultado = false;
+                res.Mensaje = "Error de base de datos al obtener la persona.";
+                res.ListaDeErrores.Add(ex.Message);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, ex.Message);
+
                 res.Resultado = false;
                 res.Mensaje = "Error inesperado al obtener la persona.";
                 res.ListaDeErrores.Add(ex.Message);
             }
 
+            _logger.LogDebug("Obtener Persona Finalizada :: {}", personaId);
+            return res;
+        }
+
+        /// <summary>
+        /// Obtiene la información completa de una persona a partir de su ID o correo electrónico.
+        /// </summary>
+        /// <param name="email">Objeto <see cref="ReqObtenerPersona"/> con el ID y/o correo a consultar.</param>
+        /// <returns>
+        /// Objeto <see cref="ResOptenerPersona"/> con la información de la persona, si fue encontrada,
+        /// junto con el estado de la operación y errores si existieran.
+        /// </returns>
+        public async Task<ResOptenerPersona> ObtenerPersonaPorCorreoAsync(string email)
+        {
+            _logger.LogDebug("Obtener Persona Por Correo Inicio :: {}", email);
+
+            var res = new ResOptenerPersona();
+            const string sql = """
+                               SELECT 
+                               p.id_persona AS PersonaId,
+                               p.num_cedula AS NumCedula,
+                               p.fecha_nacimiento AS FechaNacimiento,
+                               p.primer_nombre AS PrimerNombre,
+                               p.segundo_nombre AS SegundoNombre,
+                               p.primer_apellido AS PrimerApellido,
+                               p.segundo_apellido AS SegundoApellido,
+                               p.correo AS Correo,
+                               p.direccion AS Direccion,
+                               p.telefono_1 AS Telefono1,
+                               p.telefono_2 AS Telefono2,
+                               p.fecha_registro AS FechaRegistro,
+                               p.id_rol AS IdRol,
+                               r.nombre AS NombreRol,
+                               p.puesto AS Puesto,
+                               p.cedula_responsable AS CedulaResponsable 
+                               FROM persona p
+                               INNER JOIN Roles r ON p.id_Rol = r.id_rol
+                               WHERE correo = @email
+                               """;
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    res.Persona = await conn.QueryFirstOrDefaultAsync<Persona>(sql, new { email });
+
+                    res.Resultado = true;
+                    res.Mensaje = res.Persona != null
+                        ? "Persona encontrada correctamente."
+                        : "No se encontró ninguna persona.";
+                    if (res.Persona != null)
+                        _logger.LogDebug("Persona encontrada correctamente con email :: {}", email);
+                    else _logger.LogError("No se encontró ninguna persona con email :: {}", email);
+                }
+            }
+            catch (NpgsqlException ex)
+            {
+                _logger.LogError(ex, ex.Message);
+
+                res.Resultado = false;
+                res.Mensaje = "Error de base de datos al obtener la persona.";
+                res.ListaDeErrores.Add(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, ex.Message);
+
+                res.Resultado = false;
+                res.Mensaje = "Error inesperado al obtener la persona.";
+                res.ListaDeErrores.Add(ex.Message);
+            }
+
+            _logger.LogDebug("Obtener Persona Por Correo Final :: {}", email);
             return res;
         }
 
@@ -166,6 +201,9 @@ namespace API.Services
 
                 string passwordPlano = utilitarios.GenerarPassword(12);
                 string passwordHash = utilitarios.Encriptar(passwordPlano);
+
+                //---------------------------------------------------------------QUITAR CUANDO EMAIL SEA IMPLEMENTADO
+                _logger.LogCritical("Password :: {} QUITAR ", passwordPlano);
 
                 using var conn = new NpgsqlConnection(_connectionString);
                 using var cmd = new NpgsqlCommand(@"
@@ -253,107 +291,62 @@ namespace API.Services
         /// <returns>Resultado de la operación incluyendo errores si los hay.</returns>
         public async Task<ResRestablecerContrasena> ActualizarContrasenaAsync(ReqRestablecerContrasena req)
         {
+            _logger.LogDebug("Contrasena Actualizar Inicio :: {}", req.Correo);
+
             var res = new ResRestablecerContrasena();
             var utilitarios = new LogicaUtilitarios(_configuration);
 
+            const string sql = """
+                               UPDATE Persona
+                               SET contraseña = @newPassE
+                               WHERE correo = @Correo
+                               AND contraseña = @oldPassE
+                               """;
+
             try
             {
-                // Encriptar ambas contraseñas
-                string passActualEncriptada = utilitarios.Encriptar(req.ContrasenaActual);
-                string nuevaPassEncriptada = utilitarios.Encriptar(req.NuevaContrasena);
+                var oldPassE = utilitarios.Encriptar(req.ContrasenaActual);
+                var newPassE = utilitarios.Encriptar(req.NuevaContrasena);
 
-                // Changed to NpgsqlConnection and NpgsqlCommand
+
                 using (var conn = new NpgsqlConnection(_connectionString))
-                using (var cmd = new NpgsqlCommand("Actualizar_Contrasena", conn))
                 {
-                    cmd.CommandType = CommandType.StoredProcedure;
+                    var rowsAffected = await conn.ExecuteAsync(sql, new { newPassE, req.Correo, oldPassE });
 
-                    // Parámetros de entrada
-                    cmd.Parameters.AddWithValue("@correo", req.Correo);
-                    cmd.Parameters.AddWithValue("@contrasena_actual", passActualEncriptada);
-                    cmd.Parameters.AddWithValue("@nueva_contrasena", nuevaPassEncriptada);
 
-                    // Parámetros de salida de MSSQL han sido removidos.
-                    // La función de PostgreSQL retorna una tabla con los campos de status + resultado.
-
-                    await conn.OpenAsync();
-
-                    // Usar ExecuteReaderAsync para leer la fila de estado/ID retornada por la función.
-                    using (var reader = await cmd.ExecuteReaderAsync())
+                    if (rowsAffected != 1)
                     {
-                        int errorCode = 1;
-                        string mensaje = "No se pudo actualizar la contraseña (No response from DB).";
-                        bool resultado = false;
-
-                        if (await reader.ReadAsync())
-                        {
-                            // Lee la única fila que contiene los campos de status.
-                            errorCode = reader.IsDBNull(reader.GetOrdinal("erroroccurred"))
-                                ? 0
-                                : reader.GetInt32(reader.GetOrdinal("erroroccurred"));
-                            mensaje = reader.IsDBNull(reader.GetOrdinal("errormensaje"))
-                                ? ""
-                                : reader.GetString(reader.GetOrdinal("errormensaje"));
-                            resultado = reader.IsDBNull(reader.GetOrdinal("resultado"))
-                                ? false
-                                : reader.GetBoolean(reader.GetOrdinal("resultado"));
-                        }
-
-                        if (errorCode != 0 || !resultado)
-                        {
-                            res.Resultado = false;
-                            res.Mensaje = "No se pudo actualizar la contraseña.";
-                            if (!string.IsNullOrEmpty(mensaje))
-                                res.ListaDeErrores.Add(mensaje);
-                            return res;
-                        }
+                        res.Resultado = false;
+                        res.Mensaje = "Error: El correo o la contraseña actual no son correctos.";
+                        _logger.LogInformation("Fallo al actualizar contraseña para correo :: {}. 0 filas afectadas.",
+                            req.Correo);
                     }
-
-                    res.Resultado = true;
-                    res.Mensaje = "Contraseña actualizada correctamente.";
+                    else
+                    {
+                        res.Resultado = true;
+                        res.Mensaje = "Contraseña actualizada correctamente.";
+                        _logger.LogDebug("Contraseña actualizada para correo :: {}", req.Correo);
+                    }
                 }
             }
-            catch (Exception ex)
+            catch (NpgsqlException ex)
             {
+                _logger.LogError(ex, ex.Message);
+
                 res.Resultado = false;
-                res.Mensaje = "Error inesperado al actualizar la contraseña.";
+                res.Mensaje = "Error de base de datos al obtener la persona.";
                 res.ListaDeErrores.Add(ex.Message);
-            }
-
-            return res;
-        }
-
-        /// <summary>
-        /// Verifica si existe una persona con el correo electrónico proporcionado.
-        /// </summary>
-        /// <param name="correo">Correo electrónico a verificar.</param>
-        /// <returns>
-        /// Objeto <see cref="ResExisteCorreo"/> indicando si existe una persona con ese correo,
-        /// así como posibles errores ocurridos durante la operación.
-        /// </returns>
-        public async Task<ResExisteCorreo> ExistePersonaPorCorreoAsync(string correo)
-        {
-            var res = new ResExisteCorreo();
-
-            try
-            {
-                // Changed to NpgsqlConnection and NpgsqlCommand
-                using var conn = new NpgsqlConnection(_connectionString);
-                // PostgreSQL uses $1, $2, etc., for positional parameters in raw SQL, but Npgsql allows @name.
-                using var cmd = new NpgsqlCommand("SELECT COUNT(1) FROM Persona WHERE correo = @correo", conn);
-                cmd.Parameters.AddWithValue("@correo", correo);
-                await conn.OpenAsync();
-                // Npgsql returns a long for COUNT()
-                long count = (long)await cmd.ExecuteScalarAsync();
-                res.Existe = count > 0;
-                res.Resultado = true;
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, ex.Message);
+
                 res.Resultado = false;
+                res.Mensaje = "Error inesperado al obtener la persona.";
                 res.ListaDeErrores.Add(ex.Message);
-                res.Existe = false;
             }
+
+            _logger.LogDebug("Contrasena Actualizar Final :: {}", req.Correo);
 
             return res;
         }
@@ -361,56 +354,81 @@ namespace API.Services
         /// <summary>
         /// Actualiza la contraseña de una persona utilizando su correo electrónico.
         /// </summary>
-        /// <param name="correo">Correo electrónico de la persona.</param>
-        /// <param name="nuevaContrasenaHash">Nueva contraseña en formato hash.</param>
+        /// <param name="email">Correo electrónico de la persona.</param>
+        /// <param name="newPassWord">Nueva contraseña en formato hash.</param>
         /// <returns>
         /// Objeto <see cref="ResActualizarContrasena"/> con el resultado de la operación,
         /// incluyendo si fue exitosa y mensajes de error si aplica.
         /// </returns>
-        public async Task<ResActualizarContrasena> ActualizarContrasenaPorCorreoAsync(string correo,
-            string nuevaContrasenaHash)
+        public async Task<ResRestablecerContrasena> ActualizarContrasenaPorCorreo(string email, string newPassWord)
         {
-            var res = new ResActualizarContrasena();
+            _logger.LogDebug("Contrasena Actualizar Inicio :: {}", email);
+
+            var res = new ResRestablecerContrasena();
+            var utilitarios = new LogicaUtilitarios(_configuration);
+
+            const string sql = """
+                               UPDATE Persona
+                               SET contraseña = @newPassE
+                               WHERE correo = @email
+                               """;
 
             try
             {
-                // Changed to NpgsqlConnection and NpgsqlCommand
-                using var conn = new NpgsqlConnection(_connectionString);
-                using var cmd = new NpgsqlCommand("UPDATE Persona SET contraseña = @contraseña WHERE correo = @correo",
-                    conn);
-                cmd.Parameters.AddWithValue("@contraseña", nuevaContrasenaHash);
-                cmd.Parameters.AddWithValue("@correo", correo);
-                await conn.OpenAsync();
+                var newPassE = utilitarios.Encriptar(newPassWord);
 
-                int rows = await cmd.ExecuteNonQueryAsync();
 
-                res.Actualizado = rows > 0;
-                res.Resultado = res.Actualizado;
-                res.Mensaje = res.Actualizado
-                    ? "Contraseña actualizada correctamente."
-                    : "No se encontró el correo para actualizar.";
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    var rowsAffected = await conn.ExecuteAsync(sql, new { newPassE, email });
+
+
+                    if (rowsAffected != 1)
+                    {
+                        res.Resultado = false;
+                        res.Mensaje = "Error: El correo o la contraseña actual no son correctos.";
+                        _logger.LogInformation("Fallo al actualizar contraseña para correo :: {}. 0 filas afectadas.",
+                            email);
+                    }
+                    else
+                    {
+                        res.Resultado = true;
+                        res.Mensaje = "Contraseña actualizada correctamente.";
+                        _logger.LogDebug("Contraseña actualizada para correo :: {}", email);
+                    }
+                }
+            }
+            catch (NpgsqlException ex)
+            {
+                _logger.LogError(ex, ex.Message);
+
+                res.Resultado = false;
+                res.Mensaje = "Error de base de datos al obtener la persona.";
+                res.ListaDeErrores.Add(ex.Message);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, ex.Message);
+
                 res.Resultado = false;
-                res.Mensaje = "Error al actualizar la contraseña.";
+                res.Mensaje = "Error inesperado al obtener la persona.";
                 res.ListaDeErrores.Add(ex.Message);
-                res.Actualizado = false;
             }
+
+            _logger.LogDebug("Contrasena Actualizar Final :: {}", email);
 
             return res;
         }
 
         /// <summary>
-        /// Valida las credenciales de inicio de sesión de una persona.
+        /// Válida las credenciales de inicio de sesión de una persona.
         /// </summary>
         /// <param name="req">Objeto <see cref="ReqLoginPersona"/> que contiene el correo y la contraseña en texto plano.</param>
         /// <returns>
         /// Objeto <see cref="ResLoginPersona"/> con los datos de la persona si el login es exitoso,
         /// además de los mensajes y errores correspondientes.
         /// </returns>
-        public async Task<ResLoginPersona>
-            ValidarLoginAsync(ReqLoginPersona req) //Ya utiliza Postgres, hay que migrar todos los servicios
+        public async Task<ResLoginPersona> ValidarLoginAsync(ReqLoginPersona req)
         {
             var res = new ResLoginPersona();
             var utilitarios = new LogicaUtilitarios(_configuration);
@@ -527,172 +545,64 @@ namespace API.Services
         }
 
         /// <summary>
-        /// Obtiene la información completa de una persona a partir de su ID o correo electrónico.
+        /// Updates a user's profile information.
         /// </summary>
-        /// <param name="req">Objeto <see cref="ReqObtenerPersona"/> con el ID y/o correo a consultar.</param>
-        /// <returns>
-        /// Objeto <see cref="ResOptenerPersona"/> con la información de la persona, si fue encontrada,
-        /// junto con el estado de la operación y errores si existieran.
-        /// </returns>
-        public async Task<ResOptenerPersona> ObtenerPersonaPorCorreoAsync(ReqObtenerPersona req)
-        {
-            var response = new ResOptenerPersona();
-
-            // Changed to NpgsqlConnection and NpgsqlCommand
-            using (var conn = new NpgsqlConnection(_connectionString))
-            using (var cmd = new NpgsqlCommand("TraerInfoUsuario", conn))
-            {
-                cmd.CommandType = CommandType.StoredProcedure;
-
-                // Se pasan parámetros: Id y correo (correo puede ser null)
-                cmd.Parameters.AddWithValue("@id_persona", req.PersonaId == 0 ? (object)DBNull.Value : req.PersonaId);
-                cmd.Parameters.AddWithValue("@correo",
-                    string.IsNullOrEmpty(req.Correo) ? (object)DBNull.Value : req.Correo);
-
-                // Parámetros OUTPUT de MSSQL han sido removidos.
-                // La función de PostgreSQL retorna una tabla con los campos de persona + status.
-
-                await conn.OpenAsync();
-
-                using (var reader = await cmd.ExecuteReaderAsync())
-                {
-                    int errorOccurred = 1;
-                    string errorMsg = "No se obtuvo respuesta de la base de datos.";
-                    bool resultado = false;
-
-                    if (await reader.ReadAsync())
-                    {
-                        // Lee los datos de la persona
-                        response.Persona = new Persona
-                        {
-                            PersonaId = reader.GetInt32(reader.GetOrdinal("id_persona")),
-                            NumCedula = reader.GetInt32(reader.GetOrdinal("num_cedula")),
-                            FechaNacimiento = reader.GetDateTime(reader.GetOrdinal("fecha_nacimiento")),
-                            PrimerNombre = reader.GetString(reader.GetOrdinal("primer_nombre")),
-                            SegundoNombre = reader.IsDBNull(reader.GetOrdinal("segundo_nombre"))
-                                ? null
-                                : reader.GetString(reader.GetOrdinal("segundo_nombre")),
-                            PrimerApellido = reader.GetString(reader.GetOrdinal("primer_apellido")),
-                            SegundoApellido = reader.IsDBNull(reader.GetOrdinal("segundo_apellido"))
-                                ? null
-                                : reader.GetString(reader.GetOrdinal("segundo_apellido")),
-                            Correo = reader.GetString(reader.GetOrdinal("correo")),
-                            Password = reader.IsDBNull(reader.GetOrdinal("contraseña"))
-                                ? null
-                                : reader.GetString(reader.GetOrdinal("contraseña")),
-                            Direccion = reader.IsDBNull(reader.GetOrdinal("direccion"))
-                                ? null
-                                : reader.GetString(reader.GetOrdinal("direccion")),
-                            Telefono1 = reader.IsDBNull(reader.GetOrdinal("telefono_1"))
-                                ? 0
-                                : reader.GetInt32(reader.GetOrdinal("telefono_1")),
-                            Telefono2 = reader.IsDBNull(reader.GetOrdinal("telefono_2"))
-                                ? 0
-                                : reader.GetInt32(reader.GetOrdinal("telefono_2")),
-                            IdRol = reader.GetInt32(reader.GetOrdinal("id_rol")),
-                            Puesto = reader.IsDBNull(reader.GetOrdinal("puesto"))
-                                ? null
-                                : reader.GetString(reader.GetOrdinal("puesto")),
-                            CedulaResponsable = reader.IsDBNull(reader.GetOrdinal("cedula_responsable"))
-                                ? (int?)null
-                                : reader.GetInt32(reader.GetOrdinal("cedula_responsable")),
-                            NombreRol = reader.IsDBNull(reader.GetOrdinal("nombre_rol"))
-                                ? ""
-                                : reader.GetString(reader.GetOrdinal("nombre_rol"))
-                        };
-
-                        // Lee los parámetros de salida (Status) de la misma fila
-                        errorOccurred = reader.IsDBNull(reader.GetOrdinal("erroroccurred"))
-                            ? 0
-                            : reader.GetInt32(reader.GetOrdinal("erroroccurred"));
-                        errorMsg = reader.IsDBNull(reader.GetOrdinal("errormensaje"))
-                            ? ""
-                            : reader.GetString(reader.GetOrdinal("errormensaje"));
-                        resultado = reader.IsDBNull(reader.GetOrdinal("resultado"))
-                            ? false
-                            : reader.GetBoolean(reader.GetOrdinal("resultado"));
-                    }
-
-                    response.Resultado = resultado;
-                    response.ListaDeErrores = new List<string>();
-                    if (errorOccurred == 1)
-                        response.ListaDeErrores.Add(errorMsg ?? "Error desconocido");
-                }
-            }
-
-            return response;
-        }
-
-        /// <summary>
-        /// Actualiza los datos del perfil de la persona en la base de datos.
-        /// Utiliza procedimiento almacenado para realizar la actualización.
-        /// </summary>
-        /// <param name="req">Datos con la información a actualizar</param>
-        /// <returns>Objeto con resultado y lista de errores si ocurren</returns>
-        public async Task<ResActualizarPerfil> ActualizarPerfilAsync(ReqActualizarPerfil req)
+        /// <param name="email">The unique email of the user (from the token).</param>
+        /// <param name="req">The request object containing the updated profile data.</param>
+        /// <returns>A Result object indicating success or failure.</returns>
+        public async Task<ResActualizarPerfil> ActualizarPerfilAsync(string email, ReqActualizarPerfil req)
         {
             var res = new ResActualizarPerfil();
 
+            const string sql = """
+                               UPDATE persona
+                               SET
+                               fecha_nacimiento = @FechaNacimiento,
+                               primer_nombre = @PrimerNombre,
+                               segundo_nombre = @SegundoNombre,
+                               primer_apellido = @PrimerApellido,
+                               segundo_apellido = @SegundoApellido,
+                               direccion = @Direccion,
+                               telefono_1 = @Telefono1,
+                               telefono_2 = @Telefono2
+                               WHERE correo = @Email;
+                               """;
+
+            var parameters = new DynamicParameters();
+            if (!string.IsNullOrWhiteSpace(req.FechaNacimiento.ToString())) parameters.Add("FechaNacimiento", req.FechaNacimiento, DbType.DateTime);
+            if (!string.IsNullOrWhiteSpace(req.PrimerApellido)) parameters.Add("PrimerNombre", req.PrimerApellido, DbType.String);
+            if (!string.IsNullOrWhiteSpace(req.SegundoNombre)) parameters.Add("SegundoNombre", req.SegundoNombre, DbType.String);
+            if (!string.IsNullOrWhiteSpace(req.PrimerApellido)) parameters.Add("PrimerApellido", req.PrimerApellido, DbType.String);
+            if (!string.IsNullOrWhiteSpace(req.SegundoApellido)) parameters.Add("SegundoApellido", req.SegundoApellido, DbType.String);
+            if (!string.IsNullOrWhiteSpace(req.Direccion)) parameters.Add("Direccion", req.Direccion, DbType.String);
+            if (req.Telefono1 != 0) parameters.Add("Telefono1", req.Telefono1);
+            if (req.Telefono1 != 0) parameters.Add("Telefono2", req.Telefono2);
+            parameters.Add("Email", email, DbType.String);
+
             try
             {
-                // Changed to NpgsqlConnection and NpgsqlCommand
-                using (var con = new NpgsqlConnection(_connectionString))
-                    // Note: The original code used 'dbo.ActualizarPerfilPersona'. PostgreSQL does not use 'dbo.' schema prefix.
-                using (var cmd = new NpgsqlCommand("ActualizarPerfilPersona", con))
+                using (var conn = new NpgsqlConnection(_connectionString))
                 {
-                    cmd.CommandType = CommandType.StoredProcedure;
+                    var rowsAffected = await conn.ExecuteAsync(sql, parameters);
 
-                    // Agregar parámetros al comando SQL
-                    cmd.Parameters.AddWithValue("@id_persona", req.PersonaId);
-                    cmd.Parameters.AddWithValue("@fecha_nacimiento", req.FechaNacimiento);
-                    cmd.Parameters.AddWithValue("@primer_nombre", req.PrimerNombre);
-                    cmd.Parameters.AddWithValue("@segundo_nombre", (object?)req.SegundoNombre ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@primer_apellido", req.PrimerApellido);
-                    cmd.Parameters.AddWithValue("@segundo_apellido", (object?)req.SegundoApellido ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@correo", req.Correo);
-                    cmd.Parameters.AddWithValue("@direccion", (object?)req.Direccion ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@telefono_1", req.Telefono1);
-                    cmd.Parameters.AddWithValue("@telefono_2", (object?)req.Telefono2 ?? DBNull.Value);
 
-                    // Parámetros de salida de MSSQL han sido removidos.
-                    // La función de PostgreSQL retorna una tabla con los campos de status.
-
-                    // Ejecutar la función y leer el resultado
-                    await con.OpenAsync();
-
-                    using (var reader = await cmd.ExecuteReaderAsync())
+                    if (rowsAffected != 1)
                     {
-                        int errorOccurred = 1;
-                        string errorMensaje = "No se obtuvo respuesta de la base de datos.";
-
-                        if (await reader.ReadAsync())
-                        {
-                            // Lee la única fila que contiene los campos de status.
-                            errorOccurred = reader.IsDBNull(reader.GetOrdinal("erroroccurred"))
-                                ? 0
-                                : reader.GetInt32(reader.GetOrdinal("erroroccurred"));
-                            errorMensaje = reader.IsDBNull(reader.GetOrdinal("errormensaje"))
-                                ? ""
-                                : reader.GetString(reader.GetOrdinal("errormensaje"));
-                        }
-
-                        // Evaluar si hubo error
-                        if (errorOccurred == 1)
-                        {
-                            res.Resultado = false;
-                            res.ListaDeErrores.Add(errorMensaje);
-                        }
-                        else
-                        {
-                            res.Resultado = true;
-                        }
+                        res.Resultado = false;
+                        res.ListaDeErrores.Add(
+                            "Error: El usuario no se encontró o no se realizó ninguna actualización");
+                    }
+                    else
+                    {
+                        res.Resultado = true;
+                        res.Mensaje = "Perfil actualizado con éxito.";
                     }
                 }
             }
             catch (Exception ex)
             {
                 res.Resultado = false;
-                res.ListaDeErrores.Add(ex.Message);
+                res.ListaDeErrores.Add($"Error de base de datos al actualizar el perfil: {ex.Message}");
             }
 
             return res;

@@ -11,6 +11,6 @@ namespace API.Models.Response
         /// <summary>
         /// Objeto con la información completa de la persona consultada.
         /// </summary>
-        public Persona Persona { get; set; }
+        public Persona? Persona { get; set; }
     }
 }
