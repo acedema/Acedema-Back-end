@@ -1,0 +1,123 @@
+/* Matricula.module.css */
+
+.container {
+  padding: 3rem 0;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-geist-mono);
+  max-width: 1536px;
+  margin: 0 auto;
+}
+
+.contentSection {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  font-family: var(--font-geist-mono);
+  color: #000;
+  margin-top: 2rem;
+  margin-bottom: 4rem;
+}
+
+.textBlock {
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.textBlock h2 {
+  font-family: var(--font-bebas-neue);
+  font-size: 2.5rem;
+  color: #c38611;
+  margin-bottom: 1rem;
+}
+
+.textBlock ul {
+  list-style: none;
+  padding: 0;
+  margin-top: 1rem;
+}
+
+.textBlock li {
+  display: flex;
+  align-items: center;
+  font-size: 1.07rem;
+  gap: 1rem;
+  background-color: #f4f4f4;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.infoBlock p{
+  margin-bottom: 1rem;
+}
+
+.ctaSection {
+  position: relative;
+  height: 70vh;
+  width: 100%;
+  max-width: 1536px;
+  background-image: url('/ctaimg.jpg');
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: 3rem;
+  margin: 0 auto;
+  border-radius: 2rem;
+}
+
+.ctaOverlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 22, 54, 0.7); /* filtro azul oscuro con opacidad */
+  z-index: 1;
+}
+
+.formButtonSection {
+  position: relative;
+  z-index: 2;
+  background-color: #001636;
+  color: #fff;
+  padding: 4rem 2rem;
+  border-radius: 2rem;
+  text-align: center;
+  margin: 4rem auto;
+  max-width: 900px;
+}
+
+.formPrompt {
+  font-family: var(--font-bebas-neue);
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.formSubtitle {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.formButton {
+  display: inline-block;
+  padding: 1rem 3rem;
+  background-color: #c38611;
+  color: #001636;
+  font-family: var(--font-geist-mono);
+  font-weight: 600;
+  border-radius: 9999px;
+  text-decoration: none;
+  font-size: 1.2rem;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.formButton:hover {
+  background-color: #fff;
+  color: #001636;
+  transform: translateY(-3px);
+}

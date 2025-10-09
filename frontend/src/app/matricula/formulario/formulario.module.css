@@ -1,0 +1,116 @@
+.container {
+  padding: 4rem 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f9f9f9;
+}
+
+.formWrapper {
+  max-width: 800px;
+  width: 100%;
+  background-color: #fff;
+  padding: 3rem;
+  border-radius: 2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.title {
+  font-family: var(--font-bebas-neue);
+  font-size: 3rem;
+  color: #001636;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.subtitle {
+  font-family: var(--font-geist-mono);
+  font-size: 1.1rem;
+  color: #333;
+  line-height: 1.6;
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+.formGroup label {
+  font-family: var(--font-geist-mono);
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #001636;
+  margin-bottom: 0.5rem;
+}
+
+.formGroup input,
+.formGroup select,
+.formGroup textarea {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 1px solid #ccc;
+  border-radius: 0.5rem;
+  font-family: var(--font-geist-mono);
+  font-size: 1rem;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.formGroup input:focus,
+.formGroup select:focus,
+.formGroup textarea:focus {
+  outline: none;
+  border-color: #c38611;
+  box-shadow: 0 0 0 3px rgba(195, 134, 17, 0.2);
+}
+
+.submitButton {
+  align-self: center;
+  padding: 1rem 3rem;
+  background-color: #c38611;
+  color: #001636;
+  font-family: var(--font-geist-mono);
+  font-weight: 600;
+  border-radius: 9999px;
+  text-decoration: none;
+  font-size: 1.2rem;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.submitButton:hover {
+  background-color: #001636;
+  color: #fff;
+  transform: translateY(-3px);
+}
+
+.successMessage {
+  text-align: center;
+  padding: 2rem;
+  background-color: #e6f9f0;
+  color: #004d24;
+  border-radius: 1rem;
+}
+
+.successMessage p {
+  margin: 0.5rem 0;
+  font-size: 1.1rem;
+}
