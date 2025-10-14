@@ -189,10 +189,10 @@ namespace API.Controllers
                 return Unauthorized(new { message = resLogin.Mensaje });
 
             // Usar el nombre del rol directamente desde la base de datos
-            string rolNombre = resLogin.Persona.NombreRol ?? "Usuario";
+            var rolId = resLogin.Persona.IdRol;
 
             // Generar token con correo y rol real
-            string token = _jwtHelper.GenerarTokenLogin(resLogin.Persona.Correo, rolNombre);
+            var token = _jwtHelper.GenerarTokenLogin(resLogin.Persona.Correo, rolId);
 
 
             // Devolver respuesta 200 OK con el token y los datos relevantes del usuario
